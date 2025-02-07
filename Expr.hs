@@ -19,7 +19,9 @@ data Expr = Add Expr Expr
 -- an expression
 data Command = Set Name Expr
              | Eval Expr
+             | Quit --allows quit
   deriving Show
+
 
 
 eval :: [(Name, Int)] -> Expr -> Maybe Int
@@ -69,6 +71,8 @@ pCommand = do t <- letter
               return (Set [t] e)
             ||| do e <- pExpr
                    return (Eval e)
+            ||| do string ":q" -- allows quit
+                   return Quit -- allows quit
 
 pExpr :: Parser Expr
 pExpr = do t <- pTerm

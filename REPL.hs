@@ -48,6 +48,7 @@ repl :: REPLState -> IO ()
 repl st = do putStr (show (length (history st)) ++ " > ")
              inp <- getLine
              case parse pCommand inp of
+                  [(Quit, "")] -> putStrLn "Bye"  -- Exit if user types `:q`
                   [(cmd, "")] -> -- Must parse entire input
                           process st cmd
                   _ -> do putStrLn "Parse error"
