@@ -7,8 +7,13 @@ type Name = String
 -- At first, 'Expr' contains only addition and values. You will need to 
 -- add other operations, and variables
 data Expr = Add Expr Expr
+          | Sub Expr Expr
+          | Mul Expr Expr
+          | Div Expr Expr
+          | Var Name
           | Val Int
   deriving Show
+
 
 -- These are the REPL commands - set a variable name to a value, and evaluate
 -- an expression
@@ -16,11 +21,43 @@ data Command = Set Name Expr
              | Eval Expr
   deriving Show
 
-eval :: [(Name, Int)] -> -- Variable name to value mapping
-        Expr -> -- Expression to evaluate
-        Maybe Int -- Result (if no errors such as missing variables)
-eval vars (Val x) = Just x -- for values, just give the value directly
-eval vars (Add x y) = Nothing -- return an error (because it's not implemented yet!)
+
+eval :: [(Name, Int)] -> Expr -> Maybe Int
+-- Handle numeric values directly
+eval _ (Val x) = Just x
+
+-- Handle variables (look up their value in the variable list)
+eval vars (Var x) = lookup x vars
+
+--eval :: [(Name, Int)] -> -- Variable name to value mapping
+--        Expr -> -- Expression to evaluate
+--        Maybe Int -- Result (if no errors such as missing variables)
+--eval vars (Val x) = Just x -- for values, just give the value directly
+
+--eval vars (Add x y) = Nothing -- return an error (because it's not implemented yet!)
+
+--Add--------------------
+eval vars (Add x y) = do
+  x' <- eval vars x
+  y' <- eval vars y
+  return (x' + y')
+--Sub--------------------
+eval vars (Sub x y) = do
+  x' <- eval vars x
+  y' <- eval vars y
+  return (x' - y')
+  
+--Mul-------------------
+eval vars (Mul x y) = do
+  x' <- eval vars x
+  y' <- eval vars y
+  return (x' * y')
+--Div-------------------
+eval vars (Div x y) = do
+  x' <- eval vars x
+  y' <- eval vars y
+  if y' == 0 then Nothing else return (x' `div` y')
+
 
 digitToInt :: Char -> Int
 digitToInt x = fromEnum x - fromEnum '0'
@@ -40,8 +77,9 @@ pExpr = do t <- pTerm
               return (Add t e)
             ||| do char '-'
                    e <- pExpr
-                   error "Subtraction not yet implemented!" 
-                 ||| return t
+                   return (Sub t e)
+            ||| return t
+
 
 pFactor :: Parser Expr
 pFactor = do d <- digit
@@ -57,9 +95,11 @@ pTerm :: Parser Expr
 pTerm = do f <- pFactor
            do char '*'
               t <- pTerm
-              error "Multiplication not yet implemented" 
+              return (Mul f t)
             ||| do char '/'
                    t <- pTerm
-                   error "Division not yet implemented" 
-                 ||| return f
+                   return (Div f t)
+            ||| return f
+
+
 

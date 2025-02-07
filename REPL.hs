@@ -28,10 +28,16 @@ process st (Set var e)
      = do let st' = undefined
           -- st' should include the variable set to the result of evaluating e
           repl st'
-process st (Eval e) 
-     = do let st' = undefined
-          -- Print the result of evaluation
-          repl st'
+-- repl print result when evluating expression         
+process st (Eval e) = 
+     case eval (vars st) e of
+         Just v -> do
+             print v
+             repl st
+         Nothing -> do
+             putStrLn "Evaluation error!"
+             repl st
+
 
 -- Read, Eval, Print Loop
 -- This reads and parses the input using the pCommand parser, and calls
