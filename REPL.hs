@@ -13,15 +13,17 @@ initREPLState = REPLState [] []
 -- that name and value added.
 -- If it already exists, remove the old value
 updateVars :: Name -> Int -> [(Name, Int)] -> [(Name, Int)]
-updateVars = undefined
+updateVars name newValue vars = (name, newValue) : filter (\(x, _) -> x /= name) vars 
+-- filter is a Prelude function that takes a function and a list
+-- and returns the elements of the list that satisfy that condition
 
 -- Return a new set of variables with the given name removed
 dropVar :: Name -> [(Name, Int)] -> [(Name, Int)]
-dropVar = undefined
+dropVar name vars = filter (\(x,_) -> x /= name) vars
 
 -- Add a command to the command history in the state
 addHistory :: REPLState -> Command -> REPLState
-addHistory = undefined
+addHistory st cmd = st {history = history st ++ [cmd]} 
 
 process :: REPLState -> Command -> IO ()
 process st (Set var e) 
