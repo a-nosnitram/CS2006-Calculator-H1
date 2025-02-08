@@ -20,6 +20,7 @@ data Expr = Add Expr Expr
 data Command = Set Name Expr
              | Eval Expr
              | Quit --allows quit
+	     | History Int -- allows getting command history
   deriving Show
 
 
@@ -73,6 +74,9 @@ pCommand = do t <- letter
                    return (Eval e)
             ||| do string ":q" -- allows quit
                    return Quit -- allows quit
+            ||| do char ':'  -- command history 
+	           n <- digit
+		   return (History (digitToInt n))
 
 pExpr :: Parser Expr
 pExpr = do t <- pTerm

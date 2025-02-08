@@ -35,10 +35,19 @@ process st (Eval e) =
      case eval (vars st) e of
          Just v -> do
              print v
-             repl st
+	     let st' = addHistory st (Eval e) -- store command in history
+             repl st' -- new state st'
          Nothing -> do
              putStrLn "Evaluation error!"
              repl st
+
+process st (History n) = 
+      if n >= 0 && n < length (history st)
+	      then process st (history st !! n) -- execute command n
+	      else do 
+		      putStrLn "Invalid command number"
+		      repl st
+
 
 
 -- Read, Eval, Print Loop
@@ -49,7 +58,7 @@ process st (Eval e) =
 repl :: REPLState -> IO ()
 repl st = do putStr (show (length (history st)) ++ " > ")
              inp <- getLine
-             case parse pCommand inp of
+             case parse pCommand inp of -- could this be in process ?
                   [(Quit, "")] -> putStrLn "Bye"  -- Exit if user types `:q`
                   [(cmd, "")] -> -- Must parse entire input
                           process st cmd
