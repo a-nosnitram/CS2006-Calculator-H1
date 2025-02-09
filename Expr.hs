@@ -65,6 +65,10 @@ eval vars (Div x y) = do
 digitToInt :: Char -> Int
 digitToInt x = fromEnum x - fromEnum '0'
 
+-- function for converting multiple digits int integers
+stringToInt :: String -> Int 
+stringToInt ns = foldl (\a x -> a * 10 + digitToInt x) 0 ns
+
 pCommand :: Parser Command
 pCommand = do t <- letter
               char '='
@@ -75,8 +79,8 @@ pCommand = do t <- letter
             ||| do string ":q" -- allows quit
                    return Quit -- allows quit
             ||| do char ':'  -- command history 
-	           n <- digit
-		   return (History (digitToInt n))
+	           ns <- many digit -- multiple digits
+		   return (History (stringToInt ns))
 
 pExpr :: Parser Expr
 pExpr = do t <- pTerm

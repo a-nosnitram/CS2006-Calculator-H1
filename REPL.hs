@@ -43,7 +43,9 @@ process st (Eval e) =
 
 process st (History n) = 
       if n >= 0 && n < length (history st)
-	      then process st (history st !! n) -- execute command n
+	      then do putStrLn ("command " ++ show (n) 
+	                         ++ " : " ++ show (history st !! n)) 
+	              process st (history st !! n) -- execute command n
 	      else do 
 		      putStrLn "Invalid command number"
 		      repl st
