@@ -97,7 +97,7 @@ pFactor :: Parser Expr
 pFactor = do d <- digit
              return (Val (digitToInt d))
            ||| do v <- letter
-                  error "Variables not yet implemented" 
+                  return (Var [v])
                 ||| do char '('
                        e <- pExpr
                        char ')'

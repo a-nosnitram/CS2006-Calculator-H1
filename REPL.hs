@@ -27,9 +27,15 @@ addHistory st cmd = st {history = history st ++ [cmd]}
 
 process :: REPLState -> Command -> IO ()
 process st (Set var e) 
-     = do let st' = undefined
-          -- st' should include the variable set to the result of evaluating e
-          repl st'
+     = do let result = eval (vars st) e -- evaluate the expression
+          case result of
+               Just v -> do
+                   putStrLn ("OK")
+                   let st' = REPLState (updateVars var v (vars st)) (history st)
+                   repl st' -- new state st'
+               Nothing -> do
+                   putStrLn "Evaluation error!"
+                   repl st -- try again
 -- repl print result when evluating expression         
 process st (Eval e) = 
      case eval (vars st) e of
@@ -49,8 +55,6 @@ process st (History n) =
 	      else do 
 		      putStrLn "Invalid command number"
 		      repl st
-
-
 
 -- Read, Eval, Print Loop
 -- This reads and parses the input using the pCommand parser, and calls
