@@ -20,6 +20,7 @@ data Expr = Add Expr Expr
 data Command = Set Name Expr
              | Eval Expr
              | Quit --allows quit
+	     | History Int -- allows getting command history
   deriving Show
 
 
@@ -64,6 +65,10 @@ eval vars (Div x y) = do
 digitToInt :: Char -> Int
 digitToInt x = fromEnum x - fromEnum '0'
 
+-- function for converting multiple digits int integers
+stringToInt :: String -> Int 
+stringToInt ns = foldl (\a x -> a * 10 + digitToInt x) 0 ns
+
 pCommand :: Parser Command
 pCommand = do t <- letter
               char '='
@@ -73,6 +78,9 @@ pCommand = do t <- letter
                    return (Eval e)
             ||| do string ":q" -- allows quit
                    return Quit -- allows quit
+            ||| do char ':'  -- command history 
+	           ns <- many digit -- multiple digits
+		   return (History (stringToInt ns))
 
 pExpr :: Parser Expr
 pExpr = do t <- pTerm
