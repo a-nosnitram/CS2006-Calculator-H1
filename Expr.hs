@@ -20,7 +20,7 @@ data Expr = Add Expr Expr
 data Command = Set Name Expr
              | Eval Expr
              | Quit --allows quit
-	           | History Int -- allows getting command history
+             | History Int -- allows getting command history
   deriving Show
 
 
@@ -69,50 +69,51 @@ digitToInt x = fromEnum x - fromEnum '0'
 stringToInt :: String -> Int 
 stringToInt ns = foldl (\a x -> a * 10 + digitToInt x) 0 ns
 
-
+-- added token to ignore leading and trailing spaces
 pCommand :: Parser Command
-pCommand = do t <- letter
-              char '='
+pCommand = do t <- identifier
+              symbol "="
               e <- pExpr
-              return (Set [t] e)
-            ||| do e <- pExpr
-                   return (Eval e)
-            ||| do string ":q" -- allows quit
-                   return Quit -- allows quit
-            ||| do char ':'  -- command history 
-	           ns <- many digit -- multiple digits
-		   return (History (stringToInt ns))
+              return (Set t e)
+            ||| token (do e <- pExpr
+                          return (Eval e))
+            ||| token (do string ":q" -- allows quit
+                          return Quit) -- allows quit
+            ||| token (do char ':'  -- command history 
+                          ns <- many1 digit -- multiple digits
+                          return (History (stringToInt ns)))
 
 pExpr :: Parser Expr
 pExpr = do t <- pTerm
-           do char '+'
-              e <- pExpr
-              return (Add t e)
-            ||| do char '-'
+           (do symbol "+"
+               e <- pExpr
+               return (Add t e)
+            ||| do symbol "-"
                    e <- pExpr
                    return (Sub t e)
-            ||| return t
+            ||| return t)
+
 
 -- added multi-digit support
 pFactor :: Parser Expr
-pFactor = do d <- many1 digit -- adding many1 makes sure thres at least a digit
-             return (Val (read d)) -- convrt string to int
-           ||| do v <- letter
-                  error "Variables not yet implemented" 
-                ||| do char '('
-                       e <- pExpr
-                       char ')'
-                       return e
+pFactor = do d <- many1 digit
+             return (Val (read d))
+           ||| do v <- identifier
+                  return (Var v)
+           ||| do symbol "("
+                  e <- pExpr
+                  symbol ")"
+                  return e
 
 pTerm :: Parser Expr
 pTerm = do f <- pFactor
-           do char '*'
-              t <- pTerm
-              return (Mul f t)
-            ||| do char '/'
+           (do symbol "*"
+               t <- pTerm
+               return (Mul f t)
+            ||| do symbol "/"
                    t <- pTerm
                    return (Div f t)
-            ||| return f
+            ||| return f)
 
 
 
