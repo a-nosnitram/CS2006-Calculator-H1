@@ -20,7 +20,7 @@ data Expr = Add Expr Expr
 data Command = Set Name Expr
              | Eval Expr
              | Quit --allows quit
-	     | History Int -- allows getting command history
+	           | History Int -- allows getting command history
   deriving Show
 
 
@@ -69,6 +69,7 @@ digitToInt x = fromEnum x - fromEnum '0'
 stringToInt :: String -> Int 
 stringToInt ns = foldl (\a x -> a * 10 + digitToInt x) 0 ns
 
+
 pCommand :: Parser Command
 pCommand = do t <- letter
               char '='
@@ -92,10 +93,10 @@ pExpr = do t <- pTerm
                    return (Sub t e)
             ||| return t
 
-
+-- added multi-digit support
 pFactor :: Parser Expr
-pFactor = do d <- digit
-             return (Val (digitToInt d))
+pFactor = do d <- many1 digit -- adding many1 makes sure thres at least a digit
+             return (Val (read d)) -- convrt string to int
            ||| do v <- letter
                   error "Variables not yet implemented" 
                 ||| do char '('
