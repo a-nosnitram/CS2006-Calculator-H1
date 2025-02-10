@@ -96,6 +96,8 @@ pExpr = do t <- pTerm
 pFactor :: Parser Expr
 pFactor = do d <- digit
              return (Val (digitToInt d))
+           ||| do string "it"
+                  return (Var "it")
            ||| do v <- letter
                   return (Var [v])
                 ||| do char '('

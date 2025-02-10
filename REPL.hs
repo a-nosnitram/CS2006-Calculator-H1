@@ -4,10 +4,11 @@ import Expr
 import Parsing
 
 data REPLState = REPLState { vars :: [(Name, Int)],
-                             history :: [Command] }
+                             history :: [Command],
+                             lastResult :: Maybe Int}
 
 initREPLState :: REPLState
-initREPLState = REPLState [] []
+initREPLState = REPLState [] [] Nothing
 
 -- Given a variable name and a value, return a new set of variables with
 -- that name and value added.
@@ -21,31 +22,35 @@ updateVars name newValue vars = (name, newValue) : filter (\(x, _) -> x /= name)
 dropVar :: Name -> [(Name, Int)] -> [(Name, Int)]
 dropVar name vars = filter (\(x,_) -> x /= name) vars
 
+updateLastResult :: Maybe Int -> REPLState -> REPLState
+updateLastResult v st = st {lastResult = v}
+
 -- Add a command to the command history in the state
 addHistory :: REPLState -> Command -> REPLState
 addHistory st cmd = st {history = history st ++ [cmd]} 
 
 process :: REPLState -> Command -> IO ()
-process st (Set var e) 
-     = do let result = eval (vars st) e -- evaluate the expression
-          case result of
-               Just v -> do
-                   putStrLn ("OK")
-                   let st' = REPLState (updateVars var v (vars st)) (history st)
-                   repl st' -- new state st'
-               Nothing -> do
-                   putStrLn "Evaluation error!"
-                   repl st -- try again
+process st (Set var e) = 
+    do let result = eval (vars st) e -- evaluate the expression
+       case result of 
+            Just v -> do
+               putStrLn "OK"
+               let st' = REPLState (updateVars var v (vars st)) (history st) (lastResult st)
+               repl st' -- new state st'
+            Nothing -> do
+               putStrLn "Evaluation error!"
+               repl st -- try again
 -- repl print result when evluating expression         
 process st (Eval e) = 
-     case eval (vars st) e of
-         Just v -> do
-             print v
-	     let st' = addHistory st (Eval e) -- store command in history
-             repl st' -- new state st'
-         Nothing -> do
-             putStrLn "Evaluation error!"
-             repl st
+    case eval (vars st) e of
+        Just v -> do
+           print v
+           let st' = updateLastResult (eval (vars st) e) (addHistory st (Eval e))
+               st'' = st' { vars = updateVars "it" v (vars st') }
+           repl st'' -- new state st'
+        Nothing -> do
+           putStrLn "Evaluation error!"
+           repl st
 
 process st (History n) = 
       if n >= 0 && n < length (history st)
