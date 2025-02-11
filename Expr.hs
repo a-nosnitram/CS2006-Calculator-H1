@@ -95,17 +95,16 @@ pExpr = do t <- pTerm
 
 
 -- added multi-digit support
+-- neg numbers
 pFactor :: Parser Expr
-pFactor = do d <- many1 digit
-             return (Val (read d))
-           ||| do string "it"
-                  return (Var "it")
-           ||| do v <- letter
-                  return (Var [v])
-                ||| do char '('
-                       e <- pExpr
-                       char ')'
-                       return e
+pFactor = do n <- integer
+             return (Val n)
+           ||| do v <- identifier
+                  return (Var v)
+           ||| do symbol "("
+                  e <- pExpr
+                  symbol ")"
+                  return e
 
 pTerm :: Parser Expr
 pTerm = do f <- pFactor
