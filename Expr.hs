@@ -98,12 +98,14 @@ pExpr = do t <- pTerm
 pFactor :: Parser Expr
 pFactor = do d <- many1 digit
              return (Val (read d))
-           ||| do v <- identifier
-                  return (Var v)
-           ||| do symbol "("
-                  e <- pExpr
-                  symbol ")"
-                  return e
+           ||| do string "it"
+                  return (Var "it")
+           ||| do v <- letter
+                  return (Var [v])
+                ||| do char '('
+                       e <- pExpr
+                       char ')'
+                       return e
 
 pTerm :: Parser Expr
 pTerm = do f <- pFactor
