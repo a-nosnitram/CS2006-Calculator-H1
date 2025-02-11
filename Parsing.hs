@@ -151,3 +151,15 @@ integer                       =  token int
 
 symbol                        :: String -> Parser String
 symbol xs                     =  token (string xs)
+
+--double parser
+double :: Parser Double
+double = do
+  sign <- optional (char '-')
+  whole <- many1 digit 
+  char '.'
+  decimal <- many1 digit
+  let numStr = case sign of
+                 Just _  -> '-' : whole ++ "." ++ decimal
+                 Nothing -> whole ++ "." ++ decimal
+  return (read numStr) -- convert to double

@@ -3,9 +3,12 @@ module REPL where
 import Expr
 import Parsing
 
-data REPLState = REPLState { vars :: [(Name, Int)],
-                             history :: [Command],
-                             lastResult :: Maybe Int}
+-- In REPL.hs
+data REPLState = REPLState { 
+  vars :: [(Name, Value)], 
+  history :: [Command], 
+  lastResult :: Maybe Value  
+}
 
 initREPLState :: REPLState
 initREPLState = REPLState [] [] Nothing
@@ -13,16 +16,16 @@ initREPLState = REPLState [] [] Nothing
 -- Given a variable name and a value, return a new set of variables with
 -- that name and value added.
 -- If it already exists, remove the old value
-updateVars :: Name -> Int -> [(Name, Int)] -> [(Name, Int)]
+updateVars :: Name -> Value -> [(Name, Value)] -> [(Name, Value)]
 updateVars name newValue vars = (name, newValue) : filter (\(x, _) -> x /= name) vars 
 -- filter is a Prelude function that takes a function and a list
 -- and returns the elements of the list that satisfy that condition
 
 -- Return a new set of variables with the given name removed
-dropVar :: Name -> [(Name, Int)] -> [(Name, Int)]
-dropVar name vars = filter (\(x,_) -> x /= name) vars
+dropVar :: Name -> [(Name, Value)] -> [(Name, Value)]
+dropVar name vars = filter (\(x, _) -> x /= name) vars
 
-updateLastResult :: Maybe Int -> REPLState -> REPLState
+updateLastResult :: Maybe Value -> REPLState -> REPLState
 updateLastResult v st = st {lastResult = v}
 
 -- Add a command to the command history in the state
@@ -31,35 +34,39 @@ addHistory st cmd = st {history = history st ++ [cmd]}
 
 process :: REPLState -> Command -> IO ()
 process st (Set var e) = 
-    do let result = eval (vars st) e -- evaluate the expression
-       case result of 
-            Just v -> do
-               putStrLn "OK"
-               let st' = REPLState (updateVars var v (vars st)) (history st) (lastResult st)
-               repl st' -- new state st'
-            Nothing -> do
-               putStrLn "Evaluation error!"
-               repl st -- try again
+  case eval (vars st) e of
+    Just v -> do
+      putStrLn "OK"
+      let newVars = updateVars var v (vars st)
+          newSt = addHistory st (Set var e)  -- Add to history
+          finalSt = newSt { vars = newVars, lastResult = Just v }
+      repl finalSt
+    Nothing -> do
+      putStrLn "Evaluation error!"
+      repl st
+
 -- repl print result when evluating expression         
 process st (Eval e) = 
-    case eval (vars st) e of
-        Just v -> do
-           print v
-           let st' = updateLastResult (eval (vars st) e) (addHistory st (Eval e))
-               st'' = st' { vars = updateVars "it" v (vars st') }
-           repl st'' -- new state st'
-        Nothing -> do
-           putStrLn "Evaluation error!"
-           repl st
+  case eval (vars st) e of
+    Just v -> do
+      print v
+      let newSt = addHistory st (Eval e)
+          updatedVars = updateVars "it" v (vars newSt)
+          finalSt = newSt { vars = updatedVars, lastResult = Just v }
+      repl finalSt
+    Nothing -> do
+      putStrLn "Evaluation error!"
+      repl st 
 
 process st (History n) = 
-      if n >= 0 && n < length (history st)
-	      then do putStrLn ("command " ++ show (n) 
-	                         ++ " : " ++ show (history st !! n)) 
-	              process st (history st !! n) -- execute command n
-	      else do 
-		      putStrLn "Invalid command number"
-		      repl st
+  if n >= 0 && n < length (history st)
+  then do
+    putStrLn $ "command " ++ show n ++ " : " ++ show (history st !! n)
+    process st (history st !! n) 
+  else do
+    putStrLn "Invalid command number"
+    repl st
+
 
 -- Read, Eval, Print Loop
 -- This reads and parses the input using the pCommand parser, and calls
@@ -67,12 +74,13 @@ process st (History n) =
 -- 'process' will call 'repl' when done, so the system loops.
 
 repl :: REPLState -> IO ()
-repl st = do putStr (show (length (history st)) ++ " > ")
-             inp <- getLine
-             case parse pCommand inp of -- could this be in process ?
-                  [(Quit, "")] -> putStrLn "Bye"  -- Exit if user types `:q`
-                  [(cmd, "")] -> -- Must parse entire input
-                          process st cmd
-                  _ -> do putStrLn "Parse error"
-                          repl st
+repl st = do
+  putStr $ show (length (history st)) ++ " > "
+  inp <- getLine
+  case parse pCommand inp of
+    [(Quit, "")] -> putStrLn "Bye"
+    [(cmd, "")] -> process st cmd
+    _ -> do
+      putStrLn "Parse error"
+      repl st
 
