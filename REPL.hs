@@ -33,6 +33,8 @@ addHistory :: REPLState -> Command -> REPLState
 addHistory st cmd = st {history = history st ++ [cmd]} 
 
 process :: REPLState -> Command -> IO ()
+process st Quit = putStrLn "Bye"
+
 process st (Set var e) = 
   case eval (vars st) e of
     Just v -> do
@@ -78,7 +80,6 @@ repl st = do
   putStr $ show (length (history st)) ++ " > "
   inp <- getLine
   case parse pCommand inp of
-    [(Quit, "")] -> putStrLn "Bye"
     [(cmd, "")] -> process st cmd
     _ -> do
       putStrLn "Parse error"
