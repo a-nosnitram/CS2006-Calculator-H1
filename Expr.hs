@@ -30,7 +30,7 @@ data Command = Set Name Expr
              | Eval Expr
              | Quit --allows quit
              | History Int -- allows getting command history
-	     | Comment String -- for commenting 
+             | Comment String -- for commenting 
   deriving Show
 
 
@@ -93,21 +93,34 @@ stringToInt ns = foldl (\a x -> a * 10 + digitToInt x) 0 ns
 
 -- added token to ignore leading and trailing spaces
 pCommand :: Parser Command
-pCommand = do t <- identifier
-              symbol "="
-              e <- pExpr
-              return (Set t e)
-            ||| token (do e <- pExpr
-                          return (Eval e))
-            ||| token (do string ":q" -- allows quit
-                          return Quit) -- allows quit
-            ||| token (do char ':'  -- command history 
-                          ns <- many1 digit -- multiple digits
-                          return (History (stringToInt ns)))
-	    ||| token (do char '#'
-	                  comment <- many (sat (\x -> x /= '\n'))
-			  -- reading until newline 
-			  return (Comment comment))
+pCommand = do cmd <- command -- parsing main command 
+              many comment
+              return cmd
+           ||| do comment
+
+  where 
+    command = do 
+           t <- identifier
+           symbol "="
+           e <- pExpr
+           return (Set t e)
+       ||| token (do 
+            e <- pExpr
+            return (Eval e))
+       ||| token (do 
+            string ":q" -- allows quit
+            return Quit) -- allows quit
+       ||| token (do 
+            char ':'  -- command history 
+            ns <- many1 digit -- multiple digits
+            return (History (read ns)))
+    
+    comment = token (do 
+         char '#'
+         comment <- many (sat (\x -> x /= '\n'))
+         return (Comment comment))
+
+
 
 --expression parser
 --for add and sub
