@@ -38,7 +38,7 @@ process st Quit = putStrLn "Bye"
 process st (Set var e) = 
   case eval (vars st) e of
     Just v -> do
-      putStrLn "OK"
+      putStrLn ("OK : " ++ var ++ " = " ++ show v)
       let newVars = updateVars var v (vars st)
           newSt = addHistory st (Set var e)  -- Add to history
           finalSt = newSt { vars = newVars, lastResult = Just v }
