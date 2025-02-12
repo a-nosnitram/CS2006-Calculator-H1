@@ -30,6 +30,7 @@ data Command = Set Name Expr
              | Eval Expr
              | Quit --allows quit
              | History Int -- allows getting command history
+	     | Comment String -- for commenting 
   deriving Show
 
 
@@ -103,6 +104,10 @@ pCommand = do t <- identifier
             ||| token (do char ':'  -- command history 
                           ns <- many1 digit -- multiple digits
                           return (History (stringToInt ns)))
+	    ||| token (do char '#'
+	                  comment <- many (sat (\x -> x /= '\n'))
+			  -- reading until newline 
+			  return (Comment comment))
 
 --expression parser
 --for add and sub
