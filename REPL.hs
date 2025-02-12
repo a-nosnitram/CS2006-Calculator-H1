@@ -1,23 +1,31 @@
 module REPL where
 
 import Expr
+import Expr (VarTree, lookupVar)
 import Parsing
-
 -- In REPL.hs
 data REPLState = REPLState { 
-  vars :: [(Name, Value)], 
+  -- vars :: [(Name, Value)], 
+  vars :: Expr.VarTree,
   history :: [Command], 
   lastResult :: Maybe Value  
 }
 
 initREPLState :: REPLState
-initREPLState = REPLState [] [] Nothing
+-- initREPLState = REPLState [] [] Nothing
+initREPLState = REPLState Empty [] Nothing
 
 -- Given a variable name and a value, return a new set of variables with
 -- that name and value added.
 -- If it already exists, remove the old value
-updateVars :: Name -> Value -> [(Name, Value)] -> [(Name, Value)]
-updateVars name newValue vars = (name, newValue) : filter (\(x, _) -> x /= name) vars 
+-- updateVars :: Name -> Value -> [(Name, Value)] -> [(Name, Value)]
+-- updateVars name newValue vars = (name, newValue) : filter (\(x, _) -> x /= name) vars 
+updateVars :: Name -> Value -> VarTree -> VarTree
+updateVars name newValue Empty = Node name newValue Empty Empty
+updateVars name newValue (Node n v left right)
+  | name < n  = Node n v (updateVars name newValue left) right
+  | name > n  = Node n v left (updateVars name newValue right)
+  | otherwise = Node name newValue left right  -- Replace existing value
 -- filter is a Prelude function that takes a function and a list
 -- and returns the elements of the list that satisfy that condition
 
