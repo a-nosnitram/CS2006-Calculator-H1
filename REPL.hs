@@ -67,6 +67,8 @@ process st (History n) =
     putStrLn "Invalid command number"
     repl st
 
+process st (Comment _) = do
+        repl st -- do nothing / ignore comments
 
 -- Read, Eval, Print Loop
 -- This reads and parses the input using the pCommand parser, and calls
