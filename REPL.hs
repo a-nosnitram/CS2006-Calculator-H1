@@ -72,10 +72,13 @@ process st (History n) =
 process st (Comment _) = do
         repl st -- do nothing / ignore comments
 
+process st (EmptyLine) = do 
+        repl st
+
 -- Read, Eval, Print Loop
 -- This reads and parses the input using the pCommand parser, and calls
--- 'process' to process the command.
--- 'process' will call 'repl' when done, so the system loops.
+-- 'processFileLine to process the command.
+-- 'processFileLine will call 'repl' when done, so the system loops.
 
 repl :: REPLState -> IO ()
 repl st = do
@@ -87,3 +90,35 @@ repl st = do
       putStrLn "Parse error"
       repl st
 
+-- processFileLine has a IO REPLState return type 
+-- it is a version of process used when reading a file 
+processFileLine :: REPLState -> Command -> IO REPLState
+processFileLine st (Set var e) = 
+  case eval (vars st) e of
+    Just v -> do
+      putStrLn "OK"
+      let newVars = updateVars var v (vars st)
+          newSt = addHistory st (Set var e)  -- Add to history
+          finalSt = newSt { vars = newVars, lastResult = Just v }
+      return finalSt
+    Nothing -> do
+      putStrLn "Evaluation error!"
+      return st
+
+processFileLine st (Eval e) = 
+  case eval (vars st) e of
+    Just v -> do
+      print v
+      let newSt = addHistory st (Eval e)
+          updatedVars = updateVars "it" v (vars newSt)
+          finalSt = newSt { vars = updatedVars, lastResult = Just v }
+      return finalSt
+    Nothing -> do
+      putStrLn "Evaluation error!"
+      return st 
+
+processFileLine st (Comment _) = do
+        return st -- do nothing / ignore comments
+
+processFileLine st (EmptyLine) = do
+       return st
