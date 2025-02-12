@@ -31,6 +31,7 @@ data Command = Set Name Expr
              | Quit --allows quit
              | History Int -- allows getting command history
              | Comment String -- for commenting 
+             | EmptyLine 
   deriving Show
 
 
@@ -97,6 +98,7 @@ pCommand = do cmd <- command -- parsing main command
               many comment
               return cmd
            ||| do comment
+           ||| do emptyLine 
 
   where 
     command = do 
@@ -119,6 +121,10 @@ pCommand = do cmd <- command -- parsing main command
          char '#'
          comment <- many (sat (\x -> x /= '\n'))
          return (Comment comment))
+
+    emptyLine = token (do 
+                many (sat (\x -> x `elem` " \t"))
+                return EmptyLine)
 
 
 
