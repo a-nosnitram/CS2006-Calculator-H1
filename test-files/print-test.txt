@@ -2,4 +2,5 @@
 x = 1 
 y = x + 9
 z = x + y
-print y + x
+:print z 
+:print z + 1

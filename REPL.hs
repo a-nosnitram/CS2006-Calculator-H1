@@ -96,8 +96,8 @@ repl st = do
 
 -- processFileLine has a IO REPLState return type 
 -- it is a version of process used when reading a file 
-processFileLine :: REPLState -> Command -> IO REPLState
-processFileLine st (Set var e) = 
+processFileLine :: REPLState -> Command -> Int -> IO REPLState
+processFileLine st (Set var e) l = 
   case eval (vars st) e of
     Just v -> do
       let newVars = updateVars var v (vars st)
@@ -105,10 +105,10 @@ processFileLine st (Set var e) =
           finalSt = newSt { vars = newVars, lastResult = Just v }
       return finalSt
     Nothing -> do
-      putStrLn ("Evaluation error at command number " ++ show (length (history st)) ++ " !")     
+      putStrLn ("error : Evaluation falied at line " ++ show l)
       return st
 
-processFileLine st (Eval e) = 
+processFileLine st (Eval e) l = 
   case eval (vars st) e of
     Just v -> do
       let newSt = addHistory st (Eval e) ""
@@ -116,34 +116,34 @@ processFileLine st (Eval e) =
           finalSt = newSt { vars = updatedVars, lastResult = Just v }
       return finalSt
     Nothing -> do
-      putStrLn ("Evaluation error at command number " ++ show (length (history st)) ++ " !")
+      putStrLn ("error : Evaluation falied at line " ++ show l)
       return st 
 
-processFileLine st (Print command) = do  
+processFileLine st (Print command) l = do  
         case command of 
            Eval e -> case eval (vars st) e of 
-                Just v  -> print v
-                Nothing -> putStrLn ("Evaluation error at command number " ++ show (length (history st)) ++ " !")
+             Just v -> putStrLn (">> " ++ show v)
+             Nothing -> putStrLn ("Evaluation error at command number " ++ show (length (history st)) ++ " !")
            Set var e -> case eval (vars st) e of 
-                Just v -> print ("OK : " ++ var ++ " = " ++ show v)
-                Nothing -> putStrLn ("Evaluation error at command number " ++ show (length (history st)) ++ " !")
-	   _ -> putStrLn ("error : You cannot print this command")
-	return st
+             Just v -> putStrLn ("OK : " ++ var ++ " = " ++ show v)
+             Nothing -> putStrLn ("Evaluation error at command number " ++ show (length (history st)) ++ " !")
+           _ -> putStrLn ("error at line " ++ show l ++ ": You cannot print this command. only evaluations and set commands can be printed.")
+        return st
 
-processFileLine st (Quit) = do 
-        putStrLn "error : Quit command is not allowed within a file"
-	return st
+processFileLine st (Quit) l = do 
+        putStrLn ("error at line " ++ show l ++ ": Quit command is not allowed within a file")
+        return st
 
-processFileLine st (Clear) = do 
-        putStrLn "error : Clear command is not allowed within a file"
-	return st
+processFileLine st (Clear) l = do 
+        putStrLn ("error at line " ++ show l ++ ": Clear command is not allowed within a file")
+        return st
 
-processFileLine st (History n) = do 
-        putStrLn "error : History command is not allowed within a file"
-	return st
+processFileLine st (History n) l = do 
+        putStrLn ("error at line " ++ show l ++ ": History command is not allowed within a file")
+        return st
 
-processFileLine st (Comment _) = do
+processFileLine st (Comment _) l = do
         return st -- do nothing / ignore comments
 
-processFileLine st (EmptyLine) = do
+processFileLine st (EmptyLine) l = do
         return st

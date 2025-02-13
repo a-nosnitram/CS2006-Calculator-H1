@@ -33,8 +33,8 @@ data Command = Set Name Expr
              | Clear -- clears history
              | Comment String -- for commenting 
              | EmptyLine -- to ignore empty lines 
-	     | Loop Int Command -- for loops
-	     | Print Command
+             | Loop Int Command -- for loops (not yet implemented)
+             | Print Command
   deriving Show
 
 
@@ -97,7 +97,7 @@ stringToInt ns = foldl (\a x -> a * 10 + digitToInt x) 0 ns
 
 -- added token to ignore leading and trailing spaces
 pCommand :: Parser Command
-pCommand = do space
+pCommand = do 
               cmd <- command -- parsing main command 
               many comment
               return cmd
@@ -118,17 +118,16 @@ pCommand = do space
             return Quit) -- allows quit
        ||| token (do 
            string ":c"
-	   return Clear) -- allows to clear history
+           return Clear) -- allows to clear history
        ||| token (do 
             char ':'  -- command history 
             ns <- many1 digit -- multiple digits
             return (History (read ns)))
        ||| token (do 
-           string "print"
-	   space
-	   cmd <- command
-	   return (Print cmd))
-    
+           string ":print"
+           cmd <- command
+           return (Print cmd))
+
     comment = token (do 
          char '#'
          comment <- many (sat (\x -> x /= '\n'))
