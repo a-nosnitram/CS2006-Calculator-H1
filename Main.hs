@@ -16,7 +16,7 @@ runFile :: String -> IO ()
 runFile fileName = do 
                    contents <- readFile fileName -- retrieving file contetnts 
 		   let commands = lines contents -- splitting file into lines
-		   putStrLn ("reading from file " ++ fileName)
+		   putStrLn ("reading from file " ++ fileName ++ "\n")
 		   runCommands commands initREPLState
 
 -- similar to repl in REPL.hs, but just runs untill the end of the file insltead 

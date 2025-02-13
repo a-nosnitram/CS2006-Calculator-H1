@@ -33,7 +33,8 @@ data Command = Set Name Expr
              | Clear -- clears history
              | Comment String -- for commenting 
              | EmptyLine -- to ignore empty lines 
-	     | Loop Int Command -- for loops 
+	     | Loop Int Command -- for loops
+	     | Print Command
   deriving Show
 
 
