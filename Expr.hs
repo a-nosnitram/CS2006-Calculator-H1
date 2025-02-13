@@ -97,7 +97,8 @@ stringToInt ns = foldl (\a x -> a * 10 + digitToInt x) 0 ns
 
 -- added token to ignore leading and trailing spaces
 pCommand :: Parser Command
-pCommand = do cmd <- command -- parsing main command 
+pCommand = do space
+              cmd <- command -- parsing main command 
               many comment
               return cmd
            ||| do comment
@@ -122,6 +123,11 @@ pCommand = do cmd <- command -- parsing main command
             char ':'  -- command history 
             ns <- many1 digit -- multiple digits
             return (History (read ns)))
+       ||| token (do 
+           string "print"
+	   space
+	   cmd <- command
+	   return (Print cmd))
     
     comment = token (do 
          char '#'

@@ -119,25 +119,28 @@ processFileLine st (Eval e) =
       putStrLn ("Evaluation error at command number " ++ show (length (history st)) ++ " !")
       return st 
 
-processFileLine st (Print command) = do 
-        -- processFileLine st (command)
-        case command of
-          Eval e -> case eval (vars st) e of 
-                         Just v  -> do
-                              print v 
-                         Nothing -> do
-                              putStrLn ("Evaluation error at command number " ++ show (length (history st)) ++ " !")
-                    return processFileLine st (command)
-          Set var e -> case 
+processFileLine st (Print command) = do  
+        case command of 
+           Eval e -> case eval (vars st) e of 
+                Just v  -> print v
+                Nothing -> putStrLn ("Evaluation error at command number " ++ show (length (history st)) ++ " !")
+           Set var e -> case eval (vars st) e of 
+                Just v -> print ("OK : " ++ var ++ " = " ++ show v)
+                Nothing -> putStrLn ("Evaluation error at command number " ++ show (length (history st)) ++ " !")
+	   _ -> putStrLn ("error : You cannot print this command")
+	return st
 
 processFileLine st (Quit) = do 
         putStrLn "error : Quit command is not allowed within a file"
+	return st
 
 processFileLine st (Clear) = do 
         putStrLn "error : Clear command is not allowed within a file"
+	return st
 
 processFileLine st (History n) = do 
         putStrLn "error : History command is not allowed within a file"
+	return st
 
 processFileLine st (Comment _) = do
         return st -- do nothing / ignore comments

@@ -25,15 +25,12 @@ runFile fileName = do
 runCommands :: [String] -> REPLState -> IO ()
 runCommands [] st = process st Quit ""
 runCommands (cmd:cmds) st = do 
-        if not (all (\c -> c `elem` " \t") cmd) 
-             then putStr $ show (length (history st)) ++ " > " ++ cmd ++ "\n"
-             else return ()
 
         case parse pCommand cmd of 
              [(command, "")] -> do 
 		st' <- processFileLine st command
 		runCommands cmds st'
              _ -> do 
-		putStrLn "file parse error"
+		putStrLn ("File parse error at " ++ show (length (history st)))
                 runCommands cmds st
                   
