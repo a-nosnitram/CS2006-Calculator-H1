@@ -37,13 +37,23 @@ data Command = Set Name Expr
              | Print Command
   deriving Show
 
+data VarTree = Empty
+             | Node Name Value VarTree VarTree
+
+lookupVar :: Name -> VarTree -> Maybe Value
+lookupVar _ Empty = Nothing
+lookupVar name (Node n v left right)
+  | name == n  = Just v
+  | name < n   = lookupVar name left
+  | otherwise  = lookupVar name right
 
 -- evaluator function for epressions
-eval :: [(Name, Value)] -> Expr -> Maybe Value
+-- eval :: [(Name, Value)] -> Expr -> Maybe Value
+eval :: VarTree -> Expr -> Maybe Value
 -- Handle numeric values directly
 eval _ (Val v) = Just v
 -- Handle variables (look up their value in the variable list)
-eval vars (Var x) = lookup x vars
+eval vars (Var x) = lookupVar x vars
 
 --Add--------------------
 eval vars (Add x y) = do
