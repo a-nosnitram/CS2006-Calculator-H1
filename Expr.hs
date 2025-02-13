@@ -30,8 +30,11 @@ data Command = Set Name Expr
              | Eval Expr
              | Quit --allows quit
              | History Int -- allows getting command history
+             | Clear -- clears history
              | Comment String -- for commenting 
-             | EmptyLine 
+             | EmptyLine -- to ignore empty lines 
+             | Loop Int Command -- for loops (not yet implemented)
+             | Print Command
   deriving Show
 
 data VarTree = Empty
@@ -104,7 +107,8 @@ stringToInt ns = foldl (\a x -> a * 10 + digitToInt x) 0 ns
 
 -- added token to ignore leading and trailing spaces
 pCommand :: Parser Command
-pCommand = do cmd <- command -- parsing main command 
+pCommand = do 
+              cmd <- command -- parsing main command 
               many comment
               return cmd
            ||| do comment
@@ -123,10 +127,17 @@ pCommand = do cmd <- command -- parsing main command
             string ":q" -- allows quit
             return Quit) -- allows quit
        ||| token (do 
+           string ":c"
+           return Clear) -- allows to clear history
+       ||| token (do 
             char ':'  -- command history 
             ns <- many1 digit -- multiple digits
             return (History (read ns)))
-    
+       ||| token (do 
+           string ":print"
+           cmd <- command
+           return (Print cmd))
+
     comment = token (do 
          char '#'
          comment <- many (sat (\x -> x /= '\n'))

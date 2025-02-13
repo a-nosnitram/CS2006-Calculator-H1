@@ -1,0 +1,6 @@
+# comment 
+x = 1 
+y = x + 9
+z = x + y
+:print z 
+:print z + 1
