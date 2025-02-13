@@ -7,11 +7,12 @@ import Parsing
 data REPLState = REPLState { 
   vars :: [(Name, Value)], 
   history :: [Command], 
+  printHis :: [String], -- printable history 
   lastResult :: Maybe Value  
 }
 
 initREPLState :: REPLState
-initREPLState = REPLState [] [] Nothing
+initREPLState = REPLState [] [] [] Nothing
 
 -- Given a variable name and a value, return a new set of variables with
 -- that name and value added.
@@ -29,18 +30,18 @@ updateLastResult :: Maybe Value -> REPLState -> REPLState
 updateLastResult v st = st {lastResult = v}
 
 -- Add a command to the command history in the state
-addHistory :: REPLState -> Command -> REPLState
-addHistory st cmd = st {history = history st ++ [cmd]} 
+addHistory :: REPLState -> Command -> String -> REPLState
+addHistory st cmd cmdp = st {history = history st ++ [cmd], printHis = printHis st ++ [cmdp]} 
 
-process :: REPLState -> Command -> IO ()
-process st Quit = putStrLn "Bye"
+process :: REPLState -> Command -> String -> IO ()
+process st Quit inp = putStrLn "Bye"
 
-process st (Set var e) = 
+process st (Set var e) inp = 
   case eval (vars st) e of
     Just v -> do
       putStrLn ("OK : " ++ var ++ " = " ++ show v)
       let newVars = updateVars var v (vars st)
-          newSt = addHistory st (Set var e)  -- Add to history
+          newSt = addHistory st (Set var e) inp  -- Add to history
           finalSt = newSt { vars = newVars, lastResult = Just v }
       repl finalSt
     Nothing -> do
@@ -48,11 +49,11 @@ process st (Set var e) =
       repl st
 
 -- repl print result when evluating expression         
-process st (Eval e) = 
+process st (Eval e) inp = 
   case eval (vars st) e of
     Just v -> do
       print v
-      let newSt = addHistory st (Eval e)
+      let newSt = addHistory st (Eval e) inp
           updatedVars = updateVars "it" v (vars newSt)
           finalSt = newSt { vars = updatedVars, lastResult = Just v }
       repl finalSt
@@ -60,19 +61,22 @@ process st (Eval e) =
       putStrLn "Evaluation error!"
       repl st 
 
-process st (History n) = 
+process st (History n) inp = 
   if n >= 0 && n < length (history st)
   then do
-    putStrLn $ "command " ++ show n ++ " : " ++ show (history st !! n)
-    process st (history st !! n) 
+    putStrLn $ "command " ++ show n ++ " : " ++ (printHis st !! n)
+    process st (history st !! n) (printHis st !! n) 
   else do
     putStrLn "Invalid command number"
     repl st
 
-process st (Comment _) = do
+process st (Clear) inp = do 
+        repl st {history = [], printHis = []}
+
+process st (Comment _) inp = do
         repl st -- do nothing / ignore comments
 
-process st (EmptyLine) = do 
+process st (EmptyLine) inp = do 
         repl st
 
 -- Read, Eval, Print Loop
@@ -85,7 +89,7 @@ repl st = do
   putStr $ show (length (history st)) ++ " > "
   inp <- getLine
   case parse pCommand inp of
-    [(cmd, "")] -> process st cmd
+    [(cmd, "")] -> process st cmd inp
     _ -> do
       putStrLn "Parse error"
       repl st
@@ -98,7 +102,7 @@ processFileLine st (Set var e) =
     Just v -> do
       putStrLn "OK"
       let newVars = updateVars var v (vars st)
-          newSt = addHistory st (Set var e)  -- Add to history
+          newSt = addHistory st (Set var e) ""  -- Add to history
           finalSt = newSt { vars = newVars, lastResult = Just v }
       return finalSt
     Nothing -> do
@@ -109,7 +113,7 @@ processFileLine st (Eval e) =
   case eval (vars st) e of
     Just v -> do
       print v
-      let newSt = addHistory st (Eval e)
+      let newSt = addHistory st (Eval e) ""
           updatedVars = updateVars "it" v (vars newSt)
           finalSt = newSt { vars = updatedVars, lastResult = Just v }
       return finalSt

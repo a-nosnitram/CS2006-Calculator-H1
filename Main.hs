@@ -23,7 +23,7 @@ runFile fileName = do
 -- of looping back and quits automatically when it has executed all commands 
 -- it also prints out the command before printing out its result 
 runCommands :: [String] -> REPLState -> IO ()
-runCommands [] st = process st Quit 
+runCommands [] st = process st Quit ""
 runCommands (cmd:cmds) st = do 
         if not (all (\c -> c `elem` " \t") cmd) 
              then putStr $ show (length (history st)) ++ " > " ++ cmd ++ "\n"

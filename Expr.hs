@@ -30,8 +30,10 @@ data Command = Set Name Expr
              | Eval Expr
              | Quit --allows quit
              | History Int -- allows getting command history
+             | Clear -- clears history
              | Comment String -- for commenting 
-             | EmptyLine 
+             | EmptyLine -- to ignore empty lines 
+	     | Loop Int Command -- for loops 
   deriving Show
 
 
@@ -112,6 +114,9 @@ pCommand = do cmd <- command -- parsing main command
        ||| token (do 
             string ":q" -- allows quit
             return Quit) -- allows quit
+       ||| token (do 
+           string ":c"
+	   return Clear) -- allows to clear history
        ||| token (do 
             char ':'  -- command history 
             ns <- many1 digit -- multiple digits
