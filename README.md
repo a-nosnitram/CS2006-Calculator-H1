@@ -22,4 +22,8 @@ runFile "filename.txt"
 - `:q` = quit
 - `:1` = go back to command 1 
 - `:c` = clear command history
-- `#`  = comment 
+- `#`  = comment
+
+## file commands 
+- `:print` = prints out a `Set` or `Eval` command (other commands lead to errors)
+- `:q`, `:c`, and `:1` are not valid file commands
