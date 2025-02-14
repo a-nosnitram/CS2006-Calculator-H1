@@ -3,6 +3,7 @@ module REPL where
 import Expr
 import Expr (VarTree, lookupVar)
 import Parsing
+
 -- In REPL.hs
 data REPLState = REPLState { 
   -- vars :: [(Name, Value)], 
@@ -74,8 +75,17 @@ process st (History n) inp =
     putStrLn $ "command " ++ show n ++ " : " ++ (printHis st !! n)
     process st (history st !! n) (printHis st !! n) 
   else do
-    putStrLn "Invalid command number"
+    putStrLn "error : Invalid command number"
     repl st
+
+--process st (Loop n command) inp = do
+--        if n == 0 then do 
+--		repl st 
+--        else if n < 0 then do
+--           putStrLn "error : Invalid loop syntax"
+--           repl st
+--        else do
+--           loopHelper n st command inp
 
 process st (Clear) inp = do 
         repl st {history = [], printHis = []}
@@ -85,6 +95,13 @@ process st (Comment _) inp = do
 
 process st (EmptyLine) inp = do 
         repl st
+
+--loopHelper :: Int -> REPLState -> Command -> String -> IO ()
+--loopHelper n st command inp = 
+--   if n == 0 then return ()
+--   else do 
+--        process st command inp 
+--        loopHelper (n-1) st command inp
 
 -- Read, Eval, Print Loop
 -- This reads and parses the input using the pCommand parser, and calls
@@ -99,7 +116,6 @@ repl st = do
     [(cmd, "")] -> process st cmd inp
     _ -> do
       putStrLn "Parse error"
-      repl st
 
 -- processFileLine has a IO REPLState return type 
 -- it is a version of process used when reading a file 
@@ -148,6 +164,15 @@ processFileLine st (Clear) l = do
 processFileLine st (History n) l = do 
         putStrLn ("error at line " ++ show l ++ ": History command is not allowed within a file")
         return st
+
+processFileLine st (Loop n command) l =
+        if n < 0 then do
+               putStrLn ("error at line " ++ show l ++ ": invalid loop syntax")
+               return st
+        else if n == 0 then return st 
+        else do  
+               st' <- processFileLine st command l
+               processFileLine st' (Loop (n-1) command) l
 
 processFileLine st (Comment _) l = do
         return st -- do nothing / ignore comments

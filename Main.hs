@@ -11,7 +11,7 @@ main = do
        case args of 
             [] -> repl initREPLState
             [fileName] -> runFile fileName
-
+    
 runFile :: String -> IO ()
 runFile fileName = do 
                    contents <- readFile fileName -- retrieving file contetnts 

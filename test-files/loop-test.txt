@@ -1,0 +1,22 @@
+# testing loop commands 
+
+x = 0
+
+:loop 3 x = x + 1
+:print x
+
+# that should give an error
+:loop 2 :q
+
+# nothing happens 
+:loop 4 x 
+
+# should give a parse error  
+:loop -9 1+1
+
+# x should remain 3, but no error
+:loop 0 x = x + 1
+:print x 
+
+:loop 5 :print x + 1
+
