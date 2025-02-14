@@ -137,6 +137,11 @@ pCommand = do
            string ":print"
            cmd <- command
            return (Print cmd))
+       ||| token (do 
+           string ":loop "
+           ns <- many1 digit 
+           cmd <- command
+           return (Loop (read ns) cmd))
 
     comment = token (do 
          char '#'
