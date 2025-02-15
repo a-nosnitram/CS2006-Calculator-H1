@@ -25,6 +25,9 @@ data Expr = Add Expr Expr
           | Power Expr Expr
           | Mod Expr Expr
           | Abs Expr
+          | Sin Expr
+          | Cos Expr
+          | Tan Expr
   deriving Show
 
 
@@ -122,6 +125,23 @@ eval vars (Abs x) = do
     VInt a   -> Just $ VInt (abs a)
     VFloat a -> Just $ VFloat (abs a)
 
+eval vars (Sin x) = do
+  x' <- eval vars x
+  case x' of
+    VInt a   -> Just $ VFloat (sin (fromIntegral a))
+    VFloat a -> Just $ VFloat (sin a)
+
+eval vars (Cos x) = do
+  x' <- eval vars x
+  case x' of
+    VInt a   -> Just $ VFloat (cos (fromIntegral a))
+    VFloat a -> Just $ VFloat (cos a)
+
+eval vars (Tan x) = do
+  x' <- eval vars x
+  case x' of
+    VInt a   -> Just $ VFloat (tan (fromIntegral a))
+    VFloat a -> Just $ VFloat (tan a)
 
 --helper function to convert char to int
 digitToInt :: Char -> Int
@@ -179,6 +199,21 @@ pTerm = do symbol "abs"
            e <- pExpr
            symbol ")"
            return (Abs e)
+        ||| do symbol "sin"
+               symbol "("
+               e <- pExpr
+               symbol ")"
+               return (Sin e)
+        ||| do symbol "cos"
+               symbol "("
+               e <- pExpr
+               symbol ")"
+               return (Cos e)
+        ||| do symbol "tan"
+               symbol "("
+               e <- pExpr
+               symbol ")"
+               return (Tan e)
         ||| do f <- pFactor
                (do symbol "*"
                    t <- pTerm
