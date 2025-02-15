@@ -1,6 +1,7 @@
 module Expr where
 
 import Parsing
+import Data.Fixed (mod')
 
 type Name = String
 
@@ -21,6 +22,9 @@ data Expr = Add Expr Expr
           | Div Expr Expr
           | Var Name
           | Val Value -- literal value (int or float)
+          | Power Expr Expr
+          | Mod Expr Expr
+          | Abs Expr
   deriving Show
 
 
@@ -92,6 +96,33 @@ eval vars (Div x y) = do
     (VInt a, VFloat b) -> Just $ VFloat (fromIntegral a / b)
     (VFloat a, VInt b) -> Just $ VFloat (a / fromIntegral b)
 
+eval vars (Power x y) = do
+  x' <- eval vars x
+  y' <- eval vars y
+  case (x', y') of
+    (VInt a, VInt b)     -> Just $ VInt (a ^ b)
+    (VFloat a, VFloat b) -> Just $ VFloat (a ** b)
+    (VInt a, VFloat b)   -> Just $ VFloat (fromIntegral a ** b)
+    (VFloat a, VInt b)   -> Just $ VFloat (a ** fromIntegral b)
+
+eval vars (Mod x y) = do
+  x' <- eval vars x
+  y' <- eval vars y
+  case (x', y') of
+    (_, VInt 0)        -> Nothing
+    (_, VFloat 0.0)    -> Nothing
+    (VInt a, VInt b)   -> Just $ VInt (a `mod` b)
+    (VFloat a, VFloat b) -> Just $ VFloat (a `mod'` b)
+    (VInt a, VFloat b) -> Just $ VFloat (fromIntegral a `mod'` b)
+    (VFloat a, VInt b) -> Just $ VFloat (a `mod'` fromIntegral b)
+
+eval vars (Abs x) = do
+  x' <- eval vars x
+  case x' of
+    VInt a   -> Just $ VInt (abs a)
+    VFloat a -> Just $ VFloat (abs a)
+
+
 --helper function to convert char to int
 digitToInt :: Char -> Int
 digitToInt x = fromEnum x - fromEnum '0'
@@ -143,14 +174,27 @@ pFactor = do d <- double --double parsed first to catch decimal oints
 
 --term parser (mul and div)
 pTerm :: Parser Expr
-pTerm = do f <- pFactor
-           (do symbol "*"
-               t <- pTerm
-               return (Mul f t)
-            ||| do symbol "/"
+pTerm = do symbol "abs"
+           symbol "("
+           e <- pExpr
+           symbol ")"
+           return (Abs e)
+        ||| do f <- pFactor
+               (do symbol "*"
                    t <- pTerm
-                   return (Div f t)
-            ||| return f)
+                   return (Mul f t)
+                ||| do symbol "/"
+                       t <- pTerm
+                       return (Div f t)
+                ||| do symbol "^"
+                       t <- pTerm
+                       return (Power f t)
+                ||| do symbol "%"
+                       t <- pTerm
+                       return (Mod f t)
+                ||| return f)
+
+-- Existing parser for factors like numbers and variables
 
 
 
