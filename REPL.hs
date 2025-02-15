@@ -78,14 +78,31 @@ process st (History n) inp =
     putStrLn "error : Invalid command number"
     repl st
 
---process st (Loop n command) inp = do
---        if n == 0 then do 
---		repl st 
---        else if n < 0 then do
---           putStrLn "error : Invalid loop syntax"
---           repl st
---        else do
---           loopHelper n st command inp
+process st (Loop n command) inp = do
+        let newSt = addHistory st (Loop n command) inp 
+        case command of 
+             Eval e -> do    
+                  if n == 0 then do 
+                         repl newSt 
+                  else if n < 0 then do
+                         putStrLn "error : Invalid loop syntax"
+                         repl st
+                  else do
+                         st' <- processFileLine newSt (Loop n command) (-1)
+                         repl st'
+             Set vars e -> do
+                  if n == 0 then do 
+                         repl newSt 
+                  else if n < 0 then do
+                         putStrLn "error : Invalid loop syntax"
+                         repl st
+                  else do
+                         st' <- processFileLine newSt (Loop n command) (-1)
+                         repl st'
+             _ -> do 
+                  putStrLn "error : this command cannot be looped" 
+                  repl st
+                 
 
 process st (Clear) inp = do 
         repl st {history = [], printHis = []}
@@ -95,13 +112,6 @@ process st (Comment _) inp = do
 
 process st (EmptyLine) inp = do 
         repl st
-
---loopHelper :: Int -> REPLState -> Command -> String -> IO ()
---loopHelper n st command inp = 
---   if n == 0 then return ()
---   else do 
---        process st command inp 
---        loopHelper (n-1) st command inp
 
 -- Read, Eval, Print Loop
 -- This reads and parses the input using the pCommand parser, and calls
@@ -124,40 +134,44 @@ processFileLine st (Set var e) l =
   case eval (vars st) e of
     Just v -> do
       let newVars = updateVars var v (vars st)
-          newSt = addHistory st (Set var e) ""  -- Add to history
-          finalSt = newSt { vars = newVars, lastResult = Just v }
+          finalSt = st { vars = newVars, lastResult = Just v }
       return finalSt
     Nothing -> do
-      putStrLn ("error : Evaluation falied at line " ++ show l)
+      if l == (-1) then 
+           putStrLn ("error : Evaluation failed")
+      else 
+           putStrLn ("error at line " ++ show l ++ ": Evaluation falied")
       return st
 
 processFileLine st (Eval e) l = 
   case eval (vars st) e of
     Just v -> do
-      let newSt = addHistory st (Eval e) ""
-          updatedVars = updateVars "it" v (vars newSt)
-          finalSt = newSt { vars = updatedVars, lastResult = Just v }
+      let updatedVars = updateVars "it" v (vars st)
+          finalSt = st { vars = updatedVars, lastResult = Just v }
       return finalSt
     Nothing -> do
-      putStrLn ("error : Evaluation falied at line " ++ show l)
+      if l == (-1) then 
+            putStrLn ("error : Evaluation failed")
+      else 
+            putStrLn ("error at line " ++ show l ++ ": Evaluation falied")
       return st 
 
-processFileLine st (Print command) l = do  
+processFileLine st (Print command) l = do
         case command of 
-           Eval e -> case eval (vars st) e of 
-             Just v -> putStrLn (">> " ++ show v)
-             Nothing -> putStrLn ("Evaluation error at command number " ++ show (length (history st)) ++ " !")
-           Set var e -> case eval (vars st) e of 
-             Just v -> putStrLn ("OK : " ++ var ++ " = " ++ show v)
-             Nothing -> putStrLn ("Evaluation error at command number " ++ show (length (history st)) ++ " !")
-           _ -> putStrLn ("error at line " ++ show l ++ ": You cannot print this command. only evaluations and set commands can be printed.")
+             Eval e -> case eval (vars st) e of 
+                  Just v -> putStrLn (">> " ++ show v)
+                  Nothing -> putStrLn ("error at line " ++ show l ++ ": Evaluation failed")
+             Set var e -> case eval (vars st) e of 
+                     Just v -> putStrLn ("OK : " ++ var ++ " = " ++ show v)
+                     Nothing -> putStrLn ("error at line " ++ show l ++ ": Variable assignment failed.")
+             _ -> putStrLn ("error at line " ++ show l ++ ": You cannot print this command. only evaluations and set commands can be printed.")
         return st
 
-processFileLine st (Quit) l = do 
+processFileLine st (Quit) l = do
         putStrLn ("error at line " ++ show l ++ ": Quit command is not allowed within a file")
         return st
 
-processFileLine st (Clear) l = do 
+processFileLine st (Clear) l = do
         putStrLn ("error at line " ++ show l ++ ": Clear command is not allowed within a file")
         return st
 
@@ -167,7 +181,10 @@ processFileLine st (History n) l = do
 
 processFileLine st (Loop n command) l =
         if n < 0 then do
-               putStrLn ("error at line " ++ show l ++ ": invalid loop syntax")
+               if l == (-1) then 
+                     putStrLn ("error : invalid loop syntax")
+               else 
+                     putStrLn ("error at line " ++ show l ++ ": invalid loop syntax")
                return st
         else if n == 0 then return st 
         else do  
