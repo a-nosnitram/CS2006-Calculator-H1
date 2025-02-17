@@ -6,6 +6,7 @@ import Control.Applicative hiding (many)
 
 type Name = String
 
+-- Data type for representing values
 data Value = VInt Int | VFloat Double | VBool Bool deriving (Eq)
 
 
@@ -16,8 +17,7 @@ instance Show Value where
     | otherwise = show x -- float
   show (VBool b) = show b
 
--- At first, 'Expr' contains only addition and values. You will need to 
--- add other operations, and variables
+--Expression datatypes, representing various operations
 data Expr = Add Expr Expr
           | Sub Expr Expr
           | Mul Expr Expr
@@ -30,7 +30,7 @@ data Expr = Add Expr Expr
           | Sin Expr
           | Cos Expr
           | Tan Expr
-          --boolean and comparason
+          --boolean and comparason operations
           | And Expr Expr
           | Or Expr Expr
           | Not Expr
@@ -43,12 +43,11 @@ data Expr = Add Expr Expr
   deriving Show
 
 
--- These are the REPL commands - set a variable name to a value, and evaluate
--- an expression
+--Commands for REPL
 data Command = Set Name Expr
              | Eval Expr
              | Quit --allows quit
-             | History Int -- allows getting command history
+             | History Int -- get command history
              | Clear -- clears history
              | Comment String -- for commenting 
              | EmptyLine -- to ignore empty lines 
@@ -56,6 +55,7 @@ data Command = Set Name Expr
              | Print Command
   deriving Show
 
+-- bianary search tree for storing variables
 data VarTree = Empty
              | Node Name Value VarTree VarTree
 
@@ -67,14 +67,15 @@ lookupVar name (Node n v left right)
   | otherwise  = lookupVar name right
 
 -- evaluator function for epressions
--- eval :: [(Name, Value)] -> Expr -> Maybe Value
 eval :: VarTree -> Expr -> Maybe Value
+
 -- Handle numeric values directly
 eval _ (Val v) = Just v
+
 -- Handle variables (look up their value in the variable list)
 eval vars (Var x) = lookupVar x vars
 
---Add--------------------
+--Addition--------------------
 eval vars (Add x y) = do
   x' <- eval vars x
   y' <- eval vars y
@@ -84,7 +85,7 @@ eval vars (Add x y) = do
     (VInt a, VFloat b)   -> Just $ VFloat (fromIntegral a + b)
     (VFloat a, VInt b)   -> Just $ VFloat (a + fromIntegral b)
 
---Sub--------------------
+--Subtraction--------------------
 eval vars (Sub x y) = do
   x' <- eval vars x
   y' <- eval vars y
@@ -94,7 +95,7 @@ eval vars (Sub x y) = do
     (VInt a, VFloat b)   -> Just $ VFloat (fromIntegral a - b)
     (VFloat a, VInt b)   -> Just $ VFloat (a - fromIntegral b)
 
---Mul-------------------
+--Multiplication-------------------
 eval vars (Mul x y) = do
   x' <- eval vars x
   y' <- eval vars y
@@ -104,7 +105,7 @@ eval vars (Mul x y) = do
     (VInt a, VFloat b)   -> Just $ VFloat (fromIntegral a * b)
     (VFloat a, VInt b)   -> Just $ VFloat (a * fromIntegral b)
 
---Div-------------------
+--Division-------------------
 eval vars (Div x y) = do
   x' <- eval vars x
   y' <- eval vars y
@@ -116,6 +117,7 @@ eval vars (Div x y) = do
     (VInt a, VFloat b) -> Just $ VFloat (fromIntegral a / b)
     (VFloat a, VInt b) -> Just $ VFloat (a / fromIntegral b)
 
+--Power (exponentiation)-----------------
 eval vars (Power x y) = do
   x' <- eval vars x
   y' <- eval vars y
@@ -125,6 +127,7 @@ eval vars (Power x y) = do
     (VInt a, VFloat b)   -> Just $ VFloat (fromIntegral a ** b)
     (VFloat a, VInt b)   -> Just $ VFloat (a ** fromIntegral b)
 
+--Modulo-------------------------
 eval vars (Mod x y) = do
   x' <- eval vars x
   y' <- eval vars y
@@ -136,32 +139,37 @@ eval vars (Mod x y) = do
     (VInt a, VFloat b) -> Just $ VFloat (fromIntegral a `mod'` b)
     (VFloat a, VInt b) -> Just $ VFloat (a `mod'` fromIntegral b)
 
+--Absolute Value------------------------
 eval vars (Abs x) = do
   x' <- eval vars x
   case x' of
     VInt a   -> Just $ VInt (abs a)
     VFloat a -> Just $ VFloat (abs a)
 
+--Trigonometric functions----------------
+--sine
 eval vars (Sin x) = do
   x' <- eval vars x
   case x' of
     VInt a   -> Just $ VFloat (sin (fromIntegral a))
     VFloat a -> Just $ VFloat (sin a)
 
+--cosine
 eval vars (Cos x) = do
   x' <- eval vars x
   case x' of
     VInt a   -> Just $ VFloat (cos (fromIntegral a))
     VFloat a -> Just $ VFloat (cos a)
 
+--tangent
 eval vars (Tan x) = do
   x' <- eval vars x
   case x' of
     VInt a   -> Just $ VFloat (tan (fromIntegral a))
     VFloat a -> Just $ VFloat (tan a)
 
---boolean operators--------------------------------
--- Add these cases to the eval function
+--boolean operators-------------------------------
+--And (&&)
 eval vars (And x y) = do
   x' <- eval vars x
   y' <- eval vars y
@@ -169,6 +177,7 @@ eval vars (And x y) = do
     (VBool a, VBool b) -> Just $ VBool (a && b)
     _ -> Nothing
 
+--Or (||)
 eval vars (Or x y) = do
   x' <- eval vars x
   y' <- eval vars y
@@ -176,12 +185,15 @@ eval vars (Or x y) = do
     (VBool a, VBool b) -> Just $ VBool (a || b)
     _ -> Nothing
 
+--Not
 eval vars (Not x) = do
   x' <- eval vars x
   case x' of
     VBool a -> Just $ VBool (not a)
     _ -> Nothing
 
+--Comparason operators--------
+--Equality (==)
 eval vars (Eq x y) = do
   x' <- eval vars x
   y' <- eval vars y
@@ -193,6 +205,7 @@ eval vars (Eq x y) = do
     (VBool a, VBool b)   -> Just $ VBool (a == b)
     _ -> Nothing
 
+--inEquality (/=)
 eval vars (Neq x y) = do
   x' <- eval vars x
   y' <- eval vars y
@@ -202,8 +215,9 @@ eval vars (Neq x y) = do
     (VInt a, VFloat b)   -> Just $ VBool (fromIntegral a /= b)
     (VFloat a, VInt b)   -> Just $ VBool (a /= fromIntegral b)
     (VBool a, VBool b)   -> Just $ VBool (a /= b)
-    _ -> Nothing  -- If types don't match, comparison is invalid
+    _ -> Nothing  
 
+--Less Than
 eval vars (Lt x y) = do
   x' <- eval vars x
   y' <- eval vars y
@@ -212,9 +226,9 @@ eval vars (Lt x y) = do
     (VFloat a, VFloat b) -> Just $ VBool (a < b)
     (VInt a, VFloat b)   -> Just $ VBool (fromIntegral a < b)
     (VFloat a, VInt b)   -> Just $ VBool (a < fromIntegral b)
-    _ -> Nothing  -- If types don't match, return Nothing (invalid comparison)
+    _ -> Nothing 
 
-
+--Greater Than
 eval vars (Gt x y) = do
   x' <- eval vars x
   y' <- eval vars y
@@ -225,6 +239,7 @@ eval vars (Gt x y) = do
     (VFloat a, VInt b)   -> Just $ VBool (a > fromIntegral b)
     _ -> Nothing
 
+--Less than or equal (<=)
 eval vars (Leq x y) = do
   x' <- eval vars x
   y' <- eval vars y
@@ -235,6 +250,7 @@ eval vars (Leq x y) = do
     (VFloat a, VInt b)   -> Just $ VBool (a <= fromIntegral b)
     _ -> Nothing
 
+--Greater than or equal (>=)
 eval vars (Geq x y) = do
   x' <- eval vars x
   y' <- eval vars y
@@ -250,7 +266,7 @@ eval vars (Geq x y) = do
 digitToInt :: Char -> Int
 digitToInt x = fromEnum x - fromEnum '0'
 
--- function for converting multiple digits(string of digits)to integers
+-- function for converting multiple digits to integers
 stringToInt :: String -> Int 
 stringToInt ns = foldl (\a x -> a * 10 + digitToInt x) 0 ns
 
@@ -355,20 +371,45 @@ rest t = (do symbol "+"
 
 
 pTerm :: Parser Expr
-pTerm = do f <- pFactor
-           (do symbol "*"
-               t <- pTerm
-               return (Mul f t)
-            <|> do symbol "/"
-                   t <- pTerm
-                   return (Div f t)
-            <|> do symbol "^"
-                   t <- pTerm
-                   return (Power f t)
-            <|> do symbol "%"
-                   t <- pTerm
-                   return (Mod f t)
-            <|> return f)
+pTerm = do
+  symbol "not"
+  e <- pFactor
+  return (Not e)
+  <|> do symbol "abs"
+         symbol "("
+         e <- pExpr
+         symbol ")"
+         return (Abs e)
+  <|> do symbol "sin"
+         symbol "("
+         e <- pExpr
+         symbol ")"
+         return (Sin e)
+  <|> do symbol "cos"
+         symbol "("
+         e <- pExpr
+         symbol ")"
+         return (Cos e)
+  <|> do symbol "tan"
+         symbol "("
+         e <- pExpr
+         symbol ")"
+         return (Tan e)
+  <|> do f <- pFactor
+         (do symbol "*"
+             t <- pTerm
+             return (Mul f t)
+          <|> do symbol "/"
+                 t <- pTerm
+                 return (Div f t)
+          <|> do symbol "^"
+                 t <- pTerm
+                 return (Power f t)
+          <|> do symbol "%"
+                 t <- pTerm
+                 return (Mod f t)
+          <|> return f)
+
 
 pFactor :: Parser Expr
 pFactor = do d <- double
