@@ -25,16 +25,16 @@ instance Functor Parser where
                  return (f p')
 
 instance Applicative Parser where
-   pure = return
-   f <*> a = do f' <- f
-                a' <- a
-                return (f' a')
+   pure v = P (\inp -> [(v, inp)])
+   pf <*> pa = P (\inp -> [(f a, rest2) | (f, rest1) <- parse pf inp, (a, rest2) <- parse pa rest1])
+
+
 
 instance Monad Parser where
-   return v                   =  P (\inp -> [(v,inp)])
-   p >>= f                    =  P (\inp -> case parse p inp of
-                                               []        -> []
-                                               [(v,out)] -> parse (f v) out)
+   return = pure  -- Change this
+   p >>= f = P (\inp -> case parse p inp of
+                          []        -> []
+                          [(v,out)] -> parse (f v) out)
 
 instance Alternative Parser where
    empty = mzero
@@ -163,3 +163,8 @@ double = do
                  Just _  -> '-' : whole ++ "." ++ decimal
                  Nothing -> whole ++ "." ++ decimal
   return (read numStr) -- convert to double
+
+choice :: [Parser a] -> Parser a
+choice = foldr (<|>) empty
+
+
