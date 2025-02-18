@@ -44,26 +44,26 @@ process st Quit inp = putStrLn "Bye"
 
 process st (Set var e) inp = 
   case eval (vars st) e of
-    Just v -> do
+    Right v -> do
       putStrLn ("OK : " ++ var ++ " = " ++ show v)
       let newVars = updateVars var v (vars st)
           newSt = addHistory st (Set var e) inp  -- Add to history
           finalSt = newSt { vars = newVars, lastResult = Just v }
       repl finalSt
-    Nothing -> do
-      putStrLn "Evaluation error!"
+    Left err -> do
+      putStrLn $ "Error: " ++ err
       repl st
 
 process st (Eval e) inp = 
   case eval (vars st) e of
-    Just v -> do
+    Right v -> do
       print v
       let newSt = addHistory st (Eval e) inp
           updatedVars = updateVars "it" v (vars newSt)
           finalSt = newSt { vars = updatedVars, lastResult = Just v }
       repl finalSt
-    Nothing -> do
-      putStrLn "error : Evaluation failed"
+    Left err -> do
+      putStrLn $ "Error: " ++ err
       repl st 
 
 process st (History n) inp = 
@@ -119,18 +119,17 @@ repl st = do
     [(cmd, "")] -> process st cmd inp
     _ -> do
       putStrLn "Parse error"
-      repl st
 
 -- processFileLine has a IO REPLState return type 
 -- it is a version of process used when reading a file 
 processFileLine :: REPLState -> Command -> Int -> IO REPLState
 processFileLine st (Set var e) l = 
   case eval (vars st) e of
-    Just v -> do
+    Right v -> do
       let newVars = updateVars var v (vars st)
           finalSt = st { vars = newVars, lastResult = Just v }
       return finalSt
-    Nothing -> do
+    Left err -> do
       if l == (-1) then 
            putStrLn ("error : Evaluation failed")
       else 
@@ -139,32 +138,28 @@ processFileLine st (Set var e) l =
 
 processFileLine st (Eval e) l = 
   case eval (vars st) e of
-    Just v -> do
+    Right v -> do
       let updatedVars = updateVars "it" v (vars st)
           finalSt = st { vars = updatedVars, lastResult = Just v }
       return finalSt
-    Nothing -> do
+    Left err -> do
       if l == (-1) then 
             putStrLn ("error : Evaluation failed")
       else 
             putStrLn ("error at line " ++ show l ++ ": Evaluation falied")
       return st 
 
-processFileLine st (Print command) l = do
+processFileLine st (Print command) l = 
         case command of 
              Eval e -> case eval (vars st) e of 
-                  Just v -> do putStrLn (">> " ++ show v)
-                               let newSt = addHistory st (Eval e) "This command is not a standalone, but part of a loop"
-                                   updatedVars = updateVars "it" v (vars newSt)
-                                   finalSt = newSt { vars = updatedVars, lastResult = Just v }
-                               return finalSt
-                  Nothing -> do putStrLn ("error at line " ++ show l ++ ": Evaluation failed")
-                                return st
-             _ -> do 
-                     if l == (-1) then 
-                           putStrLn ("error : You cannot print this command")
-                     else 
-                           putStrLn ("error at line " ++ show l ++ ": You cannot print this command")
+                  Right v -> do putStrLn (">> " ++ show v)
+                                let newSt = addHistory st (Eval e) "This command is not a standalone, but part of a loop"
+                                    updatedVars = updateVars "it" v (vars newSt)
+                                    finalSt = newSt { vars = updatedVars, lastResult = Just v }
+                                 return finalSt
+                  Left err -> do putStrLn ("error at line " ++ show l ++ ": Evaluation failed")
+                                 return st
+             _ -> do putStrLn ("error at line " ++ show l ++ ": You cannot print this command")
                      return st
 
 processFileLine st (Quit) l = do
@@ -178,6 +173,7 @@ processFileLine st (Clear) l = do
 processFileLine st (History n) l = do 
         putStrLn ("error at line " ++ show l ++ ": History command is not allowed within a file")
         return st
+
 
 processFileLine st (Loop n commands) l =
         if n < 0 then do
