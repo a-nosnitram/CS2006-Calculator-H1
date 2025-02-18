@@ -1,22 +1,35 @@
-# testing loop commands 
+# Testing basic variable assignment
+x = 5
+y = 10
 
-x = 0
-
-:loop 3 x = x + 1
+# Testing :print command
 :print x
+:print y
+:print x + y
+:print 1/5 * 4
 
-# that should give an error
-:loop 2 :q
+# Testing :loop with a single command
+:loop 3 [ x = x + 1 ]
+:print x  # Expected: x increased by 3 
 
-# nothing happens 
-:loop 4 x 
+# Testing :loop with multiple commands
+:loop 2 [ x = x + 2 ; y = y - 1 ]
+:print x  # Expected: x increased by 4
+:print y  # Expected: y decreased by 2
 
-# should give a parse error  
-:loop -9 1+1
+# Testing nested loops
+:loop 2 [ :loop 2 [ x = x + 1 ; y = y + 1 ] ]
+:print x  # Expected: x increased by 4
+:print y  # Expected: y increased by 4
 
-# x should remain 3, but no error
-:loop 0 x = x + 1
-:print x 
+# Testing for error messages 
+:loop -2 [1+1] # parse error 
+:loop 3 [:c ; :q; :7] # commands cannot be looped
+:print :c 
+:print :q
+:print :7
+:print # parse error 
 
-:loop 5 :print x + 1
+
+
 
