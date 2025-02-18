@@ -23,6 +23,8 @@ data Expr = Add Expr Expr
           | Mul Expr Expr
           | Div Expr Expr
           | Var Name
+       --   | StrVal String
+       --   | Concat Expr Expr 
           | Val Value -- literal value (int or float)
           | Power Expr Expr
           | Mod Expr Expr
@@ -40,7 +42,7 @@ data Expr = Add Expr Expr
           | Gt Expr Expr    -- >
           | Leq Expr Expr   -- <=
           | Geq Expr Expr   -- >=
-  deriving Show
+  deriving (Show, Eq)
 
 
 --Commands for REPL
@@ -51,13 +53,15 @@ data Command = Set Name Expr
              | Clear -- clears history
              | Comment String -- for commenting 
              | EmptyLine -- to ignore empty lines 
-             | Loop Int Command -- for loops (not yet implemented)
-             | Print Command
-  deriving Show
+             | Loop Int [Command] -- for loops 
+             | Print Command -- for printing
+  deriving (Show, Eq)
 
 -- bianary search tree for storing variables
 data VarTree = Empty
              | Node Name Value VarTree VarTree
+  deriving (Show, Eq)
+
 
 lookupVar :: Name -> VarTree -> Maybe Value
 lookupVar _ Empty = Nothing
@@ -76,6 +80,7 @@ eval _ (Val v) = Right v
 eval vars (Var x) = case lookupVar x vars of
     Just v  -> Right v
     Nothing -> Left $ "Variable not found: " ++ x
+
 
 --Addition--------------------
 eval vars (Add x y) = do
@@ -269,22 +274,29 @@ eval vars (Geq x y) = do
     _ -> Left "Cannot compare values of different types"
 
 
---helper function to convert char to int
+--Concat-----------------
+{- eval vars (Concat x y) = do 
+   x' <- eval vars x
+   y' <- eval vars y
+   return (x' ++ y') -}
+
+-- This is a helper function to convert char to int
 digitToInt :: Char -> Int
 digitToInt x = fromEnum x - fromEnum '0'
 
--- function for converting multiple digits to integers
-stringToInt :: String -> Int 
-stringToInt ns = foldl (\a x -> a * 10 + digitToInt x) 0 ns
+-- This is a function for converting multiple digits (strings of digits) to integers
+-- stringToInt :: String -> Int 
+-- stringToInt ns = foldl (\a x -> a * 10 + digitToInt x) 0 ns
 
 -- added token to ignore leading and trailing spaces
 pCommand :: Parser Command
-pCommand = do 
+pCommand = do
+              space
               cmd <- command -- parsing main command 
               Parsing.many comment
               return cmd
            ||| do comment
-           ||| do emptyLine 
+           ||| do emptyLine     
 
   where 
     command = do 
@@ -299,21 +311,29 @@ pCommand = do
             string ":q" -- allows quit
             return Quit) -- allows quit
        ||| token (do 
-           string ":c"
-           return Clear) -- allows to clear history
+            string ":c"
+            return Clear) -- allows to clear history
        ||| token (do 
             char ':'  -- command history 
             ns <- many1 digit -- multiple digits
             return (History (read ns)))
        ||| token (do 
-           string ":print"
-           cmd <- command
-           return (Print cmd))
+            string ":print"
+            cmd <- command
+            return (Print cmd))
        ||| token (do 
-           string ":loop "
-           ns <- many1 digit 
-           cmd <- command
-           return (Loop (read ns) cmd))
+            string ":loop"
+            space
+            ns <- many1 digit 
+            space
+            char '['
+            space
+            cmds <- parseCommands 
+            space
+            char ']'
+            space
+            return (Loop (read ns) cmds))
+
 
     comment = token (do 
          char '#'
@@ -324,7 +344,15 @@ pCommand = do
                 Parsing.many (sat (\x -> x `elem` " \t"))
                 return EmptyLine)
 
-
+    parseCommands :: Parser [Command]
+    parseCommands = do 
+       first <- command
+       rest <- many (do 
+            space
+            char ';'
+            space
+            command)
+       return (first:rest)
 
 --expression parser
 --for add and sub
@@ -418,6 +446,9 @@ pTerm = do
           <|> return f)
 
 
+-- This is the factor parser with 
+-- added multi-digit support
+-- and negative number support
 pFactor :: Parser Expr
 pFactor = do d <- double
              return (Val (VFloat d))
@@ -433,3 +464,12 @@ pFactor = do d <- double
                e <- pExpr
                symbol ")"
                return e
+
+-- This parses strings 
+{- pStrVal :: Parser Expr 
+pStrVal = do 
+   char '"'
+   s <- many (sat (\x -> x /= '"'))
+   char '"'
+   return (StrVal s) -} 
+
