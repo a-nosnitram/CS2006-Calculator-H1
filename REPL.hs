@@ -97,13 +97,13 @@ process st (EmptyLine) inp = do
 process st (Print command) inp =
         case command of 
              Eval e -> case eval (vars st) e of 
-                  Just v -> do 
+                  Right v -> do 
                          putStrLn (">>> " ++ show v)
                          let newSt = addHistory st (Eval e) inp
                              updatedVars = updateVars "it" v (vars newSt)
                              finalSt = newSt { vars = updatedVars, lastResult = Just v }
                          repl finalSt 
-                  Nothing -> putStrLn ("error : Evaluation failed") 
+                  Left err -> putStrLn $ "Error: " ++ err
              _ -> do putStrLn ("error : You cannot print this command.")
                      repl st 
 
@@ -119,6 +119,7 @@ repl st = do
     [(cmd, "")] -> process st cmd inp
     _ -> do
       putStrLn "Parse error"
+      repl st
 
 -- processFileLine has a IO REPLState return type 
 -- it is a version of process used when reading a file 
@@ -152,13 +153,13 @@ processFileLine st (Eval e) l =
 processFileLine st (Print command) l = 
         case command of 
              Eval e -> case eval (vars st) e of 
-                  Right v -> do putStrLn (">> " ++ show v)
-                                let newSt = addHistory st (Eval e) "This command is not a standalone, but part of a loop"
-                                    updatedVars = updateVars "it" v (vars newSt)
-                                    finalSt = newSt { vars = updatedVars, lastResult = Just v }
-                                 return finalSt
-                  Left err -> do putStrLn ("error at line " ++ show l ++ ": Evaluation failed")
-                                 return st
+                        Right v -> do putStrLn (">> " ++ show v)
+                                      let newSt = addHistory st (Eval e) "This command is not a standalone, but part of a loop"
+                                          updatedVars = updateVars "it" v (vars newSt)
+                                          finalSt = newSt { vars = updatedVars, lastResult = Just v }
+                                      return finalSt
+                        Left err -> do putStrLn ("error at line " ++ show l ++ ": Evaluation failed")
+                                       return st
              _ -> do putStrLn ("error at line " ++ show l ++ ": You cannot print this command")
                      return st
 
