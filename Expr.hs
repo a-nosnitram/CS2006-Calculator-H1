@@ -21,8 +21,8 @@ data Expr = Add Expr Expr
           | Div Expr Expr
           | Var Name
           | Val Value -- literal value (int or float)          
-          | StrVal String
-          | Concat Expr Expr 
+       --   | StrVal String
+       --   | Concat Expr Expr 
   deriving (Show, Eq)
 
 
@@ -100,10 +100,10 @@ eval vars (Div x y) = do
     (VFloat a, VInt b) -> Just $ VFloat (a / fromIntegral b)
 
 --Concat-----------------
-eval vars (Concat x y) = do 
+{- eval vars (Concat x y) = do 
    x' <- eval vars x
    y' <- eval vars y
-   return (x' ++ y')
+   return (x' ++ y') -}
 
 -- This is a helper function to convert char to int
 digitToInt :: Char -> Int
@@ -125,14 +125,6 @@ pCommand = do
 
   where 
     command = do 
-       token (do 
-           string ":loop"
-           ns <- many1 digit 
-           char '['
-           cmds <- parseCommands 
-           char ']'
-           return (Loop (read ns) cmds))
-       ||| do 
            t <- identifier
            symbol "="
            e <- pExpr
@@ -190,12 +182,9 @@ pCommand = do
 -- for add and sub
 pExpr :: Parser Expr
 pExpr = do t <- pTerm
-           (do string "++" 
-               e <- pExpr 
-               return (Concat t e)
-            ||| do symbol "+"
-                   e <- pExpr
-                   return (Add t e)
+           (do symbol "+"
+               e <- pExpr
+               return (Add t e)
             ||| do symbol "-"
                    e <- pExpr
                    return (Sub t e)
@@ -219,8 +208,7 @@ pFactor = do d <- double --double parsed first to catch decimal oints
 
 -- This is the term parser for mul and div
 pTerm :: Parser Expr
-pTerm = do pStrVal
-     ||| do f <- pFactor
+pTerm = do f <- pFactor
            (do symbol "*"
                t <- pTerm
                return (Mul f t)
@@ -230,9 +218,9 @@ pTerm = do pStrVal
             ||| return f)
 
 -- This parses strings 
-pStrVal :: Parser Expr 
+{- pStrVal :: Parser Expr 
 pStrVal = do 
    char '"'
    s <- many (sat (\x -> x /= '"'))
    char '"'
-   return (StrVal s)
+   return (StrVal s) -} 

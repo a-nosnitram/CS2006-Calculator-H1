@@ -94,16 +94,18 @@ process st (Comment _) inp = do
 process st (EmptyLine) inp = do 
         repl st -- do nothing / ignore empty lines
 
-process st (Print command) imp = do
+process st (Print command) inp =
         case command of 
              Eval e -> case eval (vars st) e of 
-                  Just v -> putStrLn (">> " ++ show v)
-                  Nothing -> putStrLn ("error : Evaluation failed")
-             Set var e -> case eval (vars st) e of 
-                     Just v -> putStrLn ("OK : " ++ var ++ " = " ++ show v)
-                     Nothing -> putStrLn ("error : Variable assignment failed.")
-             _ -> putStrLn ("error : You cannot print this command.")
-        repl st
+                  Just v -> do 
+                         putStrLn (">>> " ++ show v)
+                         let newSt = addHistory st (Eval e) inp
+                             updatedVars = updateVars "it" v (vars newSt)
+                             finalSt = newSt { vars = updatedVars, lastResult = Just v }
+                         repl finalSt 
+                  Nothing -> putStrLn ("error : Evaluation failed") 
+             _ -> do putStrLn ("error : You cannot print this command.")
+                     repl st 
 
 -- Read, Eval, Print Loop
 -- This reads and parses the input using the pCommand parser, and calls
@@ -151,13 +153,19 @@ processFileLine st (Eval e) l =
 processFileLine st (Print command) l = do
         case command of 
              Eval e -> case eval (vars st) e of 
-                  Just v -> putStrLn (">> " ++ show v)
-                  Nothing -> putStrLn ("error at line " ++ show l ++ ": Evaluation failed")
-             Set var e -> case eval (vars st) e of 
-                     Just v -> putStrLn ("OK : " ++ var ++ " = " ++ show v)
-                     Nothing -> putStrLn ("error at line " ++ show l ++ ": Variable assignment failed.")
-             _ -> putStrLn ("error at line " ++ show l ++ ": You cannot print this command. only evaluations and set commands can be printed.")
-        return st
+                  Just v -> do putStrLn (">> " ++ show v)
+                               let newSt = addHistory st (Eval e) "This command is not a standalone, but part of a loop"
+                                   updatedVars = updateVars "it" v (vars newSt)
+                                   finalSt = newSt { vars = updatedVars, lastResult = Just v }
+                               return finalSt
+                  Nothing -> do putStrLn ("error at line " ++ show l ++ ": Evaluation failed")
+                                return st
+             _ -> do 
+                     if l == (-1) then 
+                           putStrLn ("error : You cannot print this command")
+                     else 
+                           putStrLn ("error at line " ++ show l ++ ": You cannot print this command")
+                     return st
 
 processFileLine st (Quit) l = do
         putStrLn ("error at line " ++ show l ++ ": Quit command is not allowed within a file")
