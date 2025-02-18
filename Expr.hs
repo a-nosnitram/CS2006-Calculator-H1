@@ -67,106 +67,114 @@ lookupVar name (Node n v left right)
   | otherwise  = lookupVar name right
 
 -- evaluator function for epressions
-eval :: VarTree -> Expr -> Maybe Value
+eval :: VarTree -> Expr -> Either String Value
 
 -- Handle numeric values directly
-eval _ (Val v) = Just v
+eval _ (Val v) = Right v
 
 -- Handle variables (look up their value in the variable list)
-eval vars (Var x) = lookupVar x vars
+eval vars (Var x) = case lookupVar x vars of
+    Just v  -> Right v
+    Nothing -> Left $ "Variable not found: " ++ x
 
 --Addition--------------------
 eval vars (Add x y) = do
   x' <- eval vars x
   y' <- eval vars y
   case (x', y') of
-    (VInt a, VInt b)     -> Just $ VInt (a + b)
-    (VFloat a, VFloat b) -> Just $ VFloat (a + b)
-    (VInt a, VFloat b)   -> Just $ VFloat (fromIntegral a + b)
-    (VFloat a, VInt b)   -> Just $ VFloat (a + fromIntegral b)
+    (VInt a, VInt b)     -> Right $ VInt (a + b)
+    (VFloat a, VFloat b) -> Right $ VFloat (a + b)
+    (VInt a, VFloat b)   -> Right $ VFloat (fromIntegral a + b)
+    (VFloat a, VInt b)   -> Right $ VFloat (a + fromIntegral b)
+    _ -> Left "Type mismatch in addition: operands must be numeric"
 
 --Subtraction--------------------
 eval vars (Sub x y) = do
   x' <- eval vars x
   y' <- eval vars y
   case (x', y') of
-    (VInt a, VInt b)     -> Just $ VInt (a - b)
-    (VFloat a, VFloat b) -> Just $ VFloat (a - b)
-    (VInt a, VFloat b)   -> Just $ VFloat (fromIntegral a - b)
-    (VFloat a, VInt b)   -> Just $ VFloat (a - fromIntegral b)
-
+    (VInt a, VInt b)     -> Right $ VInt (a - b)
+    (VFloat a, VFloat b) -> Right $ VFloat (a - b)
+    (VInt a, VFloat b)   -> Right $ VFloat (fromIntegral a - b)
+    (VFloat a, VInt b)   -> Right $ VFloat (a - fromIntegral b)
+    _ -> Left "Type mismatch in subtraction: operands must be numeric"
 --Multiplication-------------------
 eval vars (Mul x y) = do
   x' <- eval vars x
   y' <- eval vars y
   case (x', y') of
-    (VInt a, VInt b)     -> Just $ VInt (a * b)
-    (VFloat a, VFloat b) -> Just $ VFloat (a * b)
-    (VInt a, VFloat b)   -> Just $ VFloat (fromIntegral a * b)
-    (VFloat a, VInt b)   -> Just $ VFloat (a * fromIntegral b)
-
+    (VInt a, VInt b)     -> Right $ VInt (a * b)
+    (VFloat a, VFloat b) -> Right $ VFloat (a * b)
+    (VInt a, VFloat b)   -> Right $ VFloat (fromIntegral a * b)
+    (VFloat a, VInt b)   -> Right $ VFloat (a * fromIntegral b)
+    _ -> Left "Type mismatch in multiplication: operands must be numeric"
 --Division-------------------
 eval vars (Div x y) = do
   x' <- eval vars x
   y' <- eval vars y
-  case (x', y') of
-    (_, VInt 0)        -> Nothing
-    (_, VFloat 0.0)    -> Nothing
-    (VInt a, VInt b)   -> Just $ VFloat (fromIntegral a / fromIntegral b)
-    (VFloat a, VFloat b) -> Just $ VFloat (a / b)
-    (VInt a, VFloat b) -> Just $ VFloat (fromIntegral a / b)
-    (VFloat a, VInt b) -> Just $ VFloat (a / fromIntegral b)
+  case y' of
+    VInt 0     -> Left "Division by zero"
+    VFloat 0.0 -> Left "Division by zero"
+    _ -> case (x', y') of
+      (VInt a, VInt b)     -> Right $ VFloat (fromIntegral a / fromIntegral b)
+      (VFloat a, VFloat b) -> Right $ VFloat (a / b)
+      (VInt a, VFloat b) -> Right $ VFloat (fromIntegral a / b)
+      (VFloat a, VInt b) -> Right $ VFloat (a / fromIntegral b)
+      _ -> Left "Type mismatch in division: operands must be numeric"
 
 --Power (exponentiation)-----------------
 eval vars (Power x y) = do
   x' <- eval vars x
   y' <- eval vars y
   case (x', y') of
-    (VInt a, VInt b)     -> Just $ VInt (a ^ b)
-    (VFloat a, VFloat b) -> Just $ VFloat (a ** b)
-    (VInt a, VFloat b)   -> Just $ VFloat (fromIntegral a ** b)
-    (VFloat a, VInt b)   -> Just $ VFloat (a ** fromIntegral b)
+    (VInt a, VInt b)     -> Right $ VInt (a ^ b)
+    (VFloat a, VFloat b) -> Right $ VFloat (a ** b)
+    (VInt a, VFloat b)   -> Right $ VFloat (fromIntegral a ** b)
+    (VFloat a, VInt b)   -> Right $ VFloat (a ** fromIntegral b)
+    _-> Left "Error: Type mismatch in exponentiation"
 
 --Modulo-------------------------
 eval vars (Mod x y) = do
   x' <- eval vars x
   y' <- eval vars y
-  case (x', y') of
-    (_, VInt 0)        -> Nothing
-    (_, VFloat 0.0)    -> Nothing
-    (VInt a, VInt b)   -> Just $ VInt (a `mod` b)
-    (VFloat a, VFloat b) -> Just $ VFloat (a `mod'` b)
-    (VInt a, VFloat b) -> Just $ VFloat (fromIntegral a `mod'` b)
-    (VFloat a, VInt b) -> Just $ VFloat (a `mod'` fromIntegral b)
+  case y' of
+    VInt 0     -> Left "Modulo by zero"
+    VFloat 0.0 -> Left "Modulo by zero"
+    _ -> case (x', y') of
+      (VInt a, VInt b)   -> Right $ VInt (a `mod` b)
+      (VFloat a, VFloat b) -> Right $ VFloat (a `mod'` b)
+      (VInt a, VFloat b) -> Right $ VFloat (fromIntegral a `mod'` b)
+      (VFloat a, VInt b) -> Right $ VFloat (a `mod'` fromIntegral b)
+      _ -> Left "Type mismatch in modulo operation"
 
 --Absolute Value------------------------
 eval vars (Abs x) = do
   x' <- eval vars x
   case x' of
-    VInt a   -> Just $ VInt (abs a)
-    VFloat a -> Just $ VFloat (abs a)
+    VInt a   -> Right $ VInt (abs a)
+    VFloat a -> Right $ VFloat (abs a)
 
 --Trigonometric functions----------------
 --sine
 eval vars (Sin x) = do
   x' <- eval vars x
   case x' of
-    VInt a   -> Just $ VFloat (sin (fromIntegral a))
-    VFloat a -> Just $ VFloat (sin a)
+    VInt a   -> Right $ VFloat (sin (fromIntegral a))
+    VFloat a -> Right $ VFloat (sin a)
 
 --cosine
 eval vars (Cos x) = do
   x' <- eval vars x
   case x' of
-    VInt a   -> Just $ VFloat (cos (fromIntegral a))
-    VFloat a -> Just $ VFloat (cos a)
+    VInt a   -> Right $ VFloat (cos (fromIntegral a))
+    VFloat a -> Right $ VFloat (cos a)
 
 --tangent
 eval vars (Tan x) = do
   x' <- eval vars x
   case x' of
-    VInt a   -> Just $ VFloat (tan (fromIntegral a))
-    VFloat a -> Just $ VFloat (tan a)
+    VInt a   -> Right $ VFloat (tan (fromIntegral a))
+    VFloat a -> Right $ VFloat (tan a)
 
 --boolean operators-------------------------------
 --And (&&)
@@ -174,23 +182,22 @@ eval vars (And x y) = do
   x' <- eval vars x
   y' <- eval vars y
   case (x', y') of
-    (VBool a, VBool b) -> Just $ VBool (a && b)
-    _ -> Nothing
+    (VBool a, VBool b) -> Right $ VBool (a && b)
+    _ -> Left "Both operands must be booleans for AND operation"
 
---Or (||)
 eval vars (Or x y) = do
   x' <- eval vars x
   y' <- eval vars y
   case (x', y') of
-    (VBool a, VBool b) -> Just $ VBool (a || b)
-    _ -> Nothing
+    (VBool a, VBool b) -> Right $ VBool (a || b)
+    _ -> Left "Both operands must be booleans for OR operation"
 
 --Not
 eval vars (Not x) = do
   x' <- eval vars x
   case x' of
-    VBool a -> Just $ VBool (not a)
-    _ -> Nothing
+    VBool a -> Right $ VBool (not a)
+    _ -> Left "Operand must be a boolean for NOT operation"
 
 --Comparason operators--------
 --Equality (==)
@@ -198,68 +205,68 @@ eval vars (Eq x y) = do
   x' <- eval vars x
   y' <- eval vars y
   case (x', y') of
-    (VInt a, VInt b)     -> Just $ VBool (a == b)
-    (VFloat a, VFloat b) -> Just $ VBool (a == b)
-    (VInt a, VFloat b)   -> Just $ VBool (fromIntegral a == b)
-    (VFloat a, VInt b)   -> Just $ VBool (a == fromIntegral b)
-    (VBool a, VBool b)   -> Just $ VBool (a == b)
-    _ -> Nothing
+    (VInt a, VInt b)     -> Right $ VBool (a == b)
+    (VFloat a, VFloat b) -> Right $ VBool (a == b)
+    (VInt a, VFloat b)   -> Right $ VBool (fromIntegral a == b)
+    (VFloat a, VInt b)   -> Right $ VBool (a == fromIntegral b)
+    (VBool a, VBool b)   -> Right $ VBool (a == b)
+    _ -> Left "Cannot compare values of different types"
 
 --inEquality (/=)
 eval vars (Neq x y) = do
   x' <- eval vars x
   y' <- eval vars y
   case (x', y') of
-    (VInt a, VInt b)     -> Just $ VBool (a /= b)
-    (VFloat a, VFloat b) -> Just $ VBool (a /= b)
-    (VInt a, VFloat b)   -> Just $ VBool (fromIntegral a /= b)
-    (VFloat a, VInt b)   -> Just $ VBool (a /= fromIntegral b)
-    (VBool a, VBool b)   -> Just $ VBool (a /= b)
-    _ -> Nothing  
+    (VInt a, VInt b)     -> Right $ VBool (a /= b)
+    (VFloat a, VFloat b) -> Right $ VBool (a /= b)
+    (VInt a, VFloat b)   -> Right $ VBool (fromIntegral a /= b)
+    (VFloat a, VInt b)   -> Right $ VBool (a /= fromIntegral b)
+    (VBool a, VBool b)   -> Right $ VBool (a /= b)
+    _ -> Left "Cannot compare values of different types" 
 
 --Less Than
 eval vars (Lt x y) = do
   x' <- eval vars x
   y' <- eval vars y
   case (x', y') of
-    (VInt a, VInt b)     -> Just $ VBool (a < b)
-    (VFloat a, VFloat b) -> Just $ VBool (a < b)
-    (VInt a, VFloat b)   -> Just $ VBool (fromIntegral a < b)
-    (VFloat a, VInt b)   -> Just $ VBool (a < fromIntegral b)
-    _ -> Nothing 
+    (VInt a, VInt b)     -> Right $ VBool (a < b)
+    (VFloat a, VFloat b) -> Right $ VBool (a < b)
+    (VInt a, VFloat b)   -> Right $ VBool (fromIntegral a < b)
+    (VFloat a, VInt b)   -> Right $ VBool (a < fromIntegral b)
+    _ -> Left "Cannot compare values of different types"
 
 --Greater Than
 eval vars (Gt x y) = do
   x' <- eval vars x
   y' <- eval vars y
   case (x', y') of
-    (VInt a, VInt b)     -> Just $ VBool (a > b)
-    (VFloat a, VFloat b) -> Just $ VBool (a > b)
-    (VInt a, VFloat b)   -> Just $ VBool (fromIntegral a > b)
-    (VFloat a, VInt b)   -> Just $ VBool (a > fromIntegral b)
-    _ -> Nothing
+    (VInt a, VInt b)     -> Right $ VBool (a > b)
+    (VFloat a, VFloat b) -> Right $ VBool (a > b)
+    (VInt a, VFloat b)   -> Right $ VBool (fromIntegral a > b)
+    (VFloat a, VInt b)   -> Right $ VBool (a > fromIntegral b)
+    _ -> Left "Cannot compare values of different types"
 
 --Less than or equal (<=)
 eval vars (Leq x y) = do
   x' <- eval vars x
   y' <- eval vars y
   case (x', y') of
-    (VInt a, VInt b)     -> Just $ VBool (a <= b)
-    (VFloat a, VFloat b) -> Just $ VBool (a <= b)
-    (VInt a, VFloat b)   -> Just $ VBool (fromIntegral a <= b)
-    (VFloat a, VInt b)   -> Just $ VBool (a <= fromIntegral b)
-    _ -> Nothing
+    (VInt a, VInt b)     -> Right $ VBool (a <= b)
+    (VFloat a, VFloat b) -> Right $ VBool (a <= b)
+    (VInt a, VFloat b)   -> Right $ VBool (fromIntegral a <= b)
+    (VFloat a, VInt b)   -> Right $ VBool (a <= fromIntegral b)
+    _ -> Left "Cannot compare values of different types"
 
 --Greater than or equal (>=)
 eval vars (Geq x y) = do
   x' <- eval vars x
   y' <- eval vars y
   case (x', y') of
-    (VInt a, VInt b)     -> Just $ VBool (a >= b)
-    (VFloat a, VFloat b) -> Just $ VBool (a >= b)
-    (VInt a, VFloat b)   -> Just $ VBool (fromIntegral a >= b)
-    (VFloat a, VInt b)   -> Just $ VBool (a >= fromIntegral b)
-    _ -> Nothing
+    (VInt a, VInt b)     -> Right $ VBool (a >= b)
+    (VFloat a, VFloat b) -> Right $ VBool (a >= b)
+    (VInt a, VFloat b)   -> Right $ VBool (fromIntegral a >= b)
+    (VFloat a, VInt b)   -> Right $ VBool (a >= fromIntegral b)
+    _ -> Left "Cannot compare values of different types"
 
 
 --helper function to convert char to int

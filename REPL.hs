@@ -44,27 +44,27 @@ process st Quit inp = putStrLn "Bye"
 
 process st (Set var e) inp = 
   case eval (vars st) e of
-    Just v -> do
+    Right v -> do
       putStrLn ("OK : " ++ var ++ " = " ++ show v)
       let newVars = updateVars var v (vars st)
           newSt = addHistory st (Set var e) inp  -- Add to history
           finalSt = newSt { vars = newVars, lastResult = Just v }
       repl finalSt
-    Nothing -> do
-      putStrLn "Evaluation error!"
+    Left err -> do
+      putStrLn $ "Error: " ++ err
       repl st
 
 -- repl print result when evluating expression         
 process st (Eval e) inp = 
   case eval (vars st) e of
-    Just v -> do
+    Right v -> do
       print v
       let newSt = addHistory st (Eval e) inp
           updatedVars = updateVars "it" v (vars newSt)
           finalSt = newSt { vars = updatedVars, lastResult = Just v }
       repl finalSt
-    Nothing -> do
-      putStrLn "Evaluation error!"
+    Left err -> do
+      putStrLn $ "Error: " ++ err
       repl st 
 
 process st (History n) inp = 
@@ -130,11 +130,11 @@ repl st = do
 processFileLine :: REPLState -> Command -> Int -> IO REPLState
 processFileLine st (Set var e) l = 
   case eval (vars st) e of
-    Just v -> do
+    Right v -> do
       let newVars = updateVars var v (vars st)
           finalSt = st { vars = newVars, lastResult = Just v }
       return finalSt
-    Nothing -> do
+    Left err -> do
       if l == (-1) then 
            putStrLn ("error : Evaluation failed")
       else 
@@ -143,11 +143,11 @@ processFileLine st (Set var e) l =
 
 processFileLine st (Eval e) l = 
   case eval (vars st) e of
-    Just v -> do
+    Right v -> do
       let updatedVars = updateVars "it" v (vars st)
           finalSt = st { vars = updatedVars, lastResult = Just v }
       return finalSt
-    Nothing -> do
+    Left err -> do
       if l == (-1) then 
             putStrLn ("error : Evaluation failed")
       else 
@@ -157,11 +157,11 @@ processFileLine st (Eval e) l =
 processFileLine st (Print command) l = do
         case command of 
              Eval e -> case eval (vars st) e of 
-                  Just v -> putStrLn (">> " ++ show v)
-                  Nothing -> putStrLn ("error at line " ++ show l ++ ": Evaluation failed")
+                  Right v -> putStrLn (">> " ++ show v)
+                  Left err -> putStrLn ("error at line " ++ show l ++ ": Evaluation failed")
              Set var e -> case eval (vars st) e of 
-                     Just v -> putStrLn ("OK : " ++ var ++ " = " ++ show v)
-                     Nothing -> putStrLn ("error at line " ++ show l ++ ": Variable assignment failed.")
+                     Right v -> putStrLn ("OK : " ++ var ++ " = " ++ show v)
+                     Left err -> putStrLn ("error at line " ++ show l ++ ": Variable assignment failed.")
              _ -> putStrLn ("error at line " ++ show l ++ ": You cannot print this command. only evaluations and set commands can be printed.")
         return st
 
