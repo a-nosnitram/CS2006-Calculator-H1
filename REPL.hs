@@ -72,14 +72,14 @@ process st (History n) inp =
     putStrLn $ "command " ++ show n ++ " : " ++ (printHis st !! n)
     process st (history st !! n) (printHis st !! n) 
   else do
-    putStrLn "error : Invalid command number"
+    putStrLn "Error: Invalid command number"
     repl st
 
 process st (Loop n commands) inp = do
         let newSt = addHistory st (Loop n commands) inp 
         if n == 0 then repl newSt 
         else if n < 0 then do
-                putStrLn "error : Invalid loop syntax"
+                putStrLn "Error: Invalid loop syntax"
                 repl st
         else do  
                 st' <- processFileLine newSt (Loop n commands) (-1)
@@ -94,18 +94,10 @@ process st (Comment _) inp = do
 process st (EmptyLine) inp = do 
         repl st -- do nothing / ignore empty lines
 
-process st (Print command) inp =
-        case command of 
-             Eval e -> case eval (vars st) e of 
-                  Right v -> do 
-                         putStrLn (">>> " ++ show v)
-                         let newSt = addHistory st (Eval e) inp
-                             updatedVars = updateVars "it" v (vars newSt)
-                             finalSt = newSt { vars = updatedVars, lastResult = Just v }
-                         repl finalSt 
-                  Left err -> putStrLn $ "Error: " ++ err
-             _ -> do putStrLn ("error : You cannot print this command.")
-                     repl st 
+process st (Print exprs) inp = do 
+        let newSt = addHistory st (Print exprs) inp
+        st' <- processFileLine newSt (Print exprs) (-1)
+        repl st'
 
 -- Read, Eval, Print Loop
 -- This reads and parses the input using the pCommand parser, and calls
@@ -118,7 +110,7 @@ repl st = do
   case parse pCommand inp of
     [(cmd, "")] -> process st cmd inp
     _ -> do
-      putStrLn "Parse error"
+      putStrLn "Parse Error"
       repl st
 
 -- processFileLine has a IO REPLState return type 
@@ -132,9 +124,9 @@ processFileLine st (Set var e) l =
       return finalSt
     Left err -> do
       if l == (-1) then 
-           putStrLn ("error : Evaluation failed")
+           putStrLn $ "Error: " ++ err
       else 
-           putStrLn ("error at line " ++ show l ++ ": Evaluation falied")
+           putStrLn $ "Error at line " ++ show l ++ ": " ++ err
       return st
 
 processFileLine st (Eval e) l = 
@@ -145,43 +137,34 @@ processFileLine st (Eval e) l =
       return finalSt
     Left err -> do
       if l == (-1) then 
-            putStrLn ("error : Evaluation failed")
+            putStrLn $ "Error: " ++ err
       else 
-            putStrLn ("error at line " ++ show l ++ ": Evaluation falied")
+            putStrLn $ "Error at line " ++ show l ++ ": " ++ err
       return st 
 
-processFileLine st (Print command) l = 
-        case command of 
-             Eval e -> case eval (vars st) e of 
-                        Right v -> do putStrLn (">> " ++ show v)
-                                      let newSt = addHistory st (Eval e) "This command is not a standalone, but part of a loop"
-                                          updatedVars = updateVars "it" v (vars newSt)
-                                          finalSt = newSt { vars = updatedVars, lastResult = Just v }
-                                      return finalSt
-                        Left err -> do putStrLn ("error at line " ++ show l ++ ": Evaluation failed")
-                                       return st
-             _ -> do putStrLn ("error at line " ++ show l ++ ": You cannot print this command")
-                     return st
+processFileLine st (Print exprs) l = do  
+        st' <- processExprs st exprs l 
+        return st'
 
 processFileLine st (Quit) l = do
-        putStrLn ("error at line " ++ show l ++ ": Quit command is not allowed within a file")
+        putStrLn $ "Error at line " ++ show l ++ ": Quit command is not allowed within a file"
         return st
 
 processFileLine st (Clear) l = do
-        putStrLn ("error at line " ++ show l ++ ": Clear command is not allowed within a file")
+        putStrLn $ "Error at line " ++ show l ++ ": Clear command is not allowed within a file"
         return st
 
 processFileLine st (History n) l = do 
-        putStrLn ("error at line " ++ show l ++ ": History command is not allowed within a file")
+        putStrLn $ "Error at line " ++ show l ++ ": History command is not allowed within a file"
         return st
 
 
 processFileLine st (Loop n commands) l =
         if n < 0 then do
                if l == (-1) then 
-                     putStrLn ("error : invalid loop syntax")
+                     putStrLn ("Error: Invalid loop syntax")
                else 
-                     putStrLn ("error at line " ++ show l ++ ": invalid loop syntax")
+                     putStrLn ("Error at line " ++ show l ++ ": Invalid loop syntax")
                return st
         else if n == 0 then return st 
         else do  
@@ -197,6 +180,20 @@ processFileLine st (Comment _) l = do
 processFileLine st (EmptyLine) l = do
         return st
 
+processExprs :: REPLState -> [Expr] -> Int -> IO REPLState
+processExprs st [] _ = return st
+processExprs st (expr:exprs) l = 
+        case eval (vars st) expr of 
+                Right v -> do putStrLn (">> " ++ show v)
+                              let updatedVars = updateVars "it" v (vars st)
+                                  finalSt = st { vars = updatedVars, lastResult = Just v }
+                              processExprs finalSt exprs l
+                Left err -> do if l == (-1) then 
+                                   putStrLn ("Error: " ++ err)
+                               else
+                                   putStrLn ("Error at line " ++ show l ++ ": " ++ err)
+                               processExprs st exprs l
+
 processCommands :: REPLState -> [Command] -> Int -> IO REPLState
 processCommands st [] _ = return st
 processCommands st (cmd:cmds) l = 
@@ -207,7 +204,7 @@ processCommands st (cmd:cmds) l =
              Set vars e -> do
                 st' <- processFileLine st cmd l
                 processCommands st' cmds l
-             Print command -> do
+             Print exprs -> do
                 st' <- processFileLine st cmd l
                 processCommands st' cmds l
              Loop n commands -> do 
@@ -215,7 +212,7 @@ processCommands st (cmd:cmds) l =
                 processCommands st' cmds l
              _ -> do 
                 if l == (-1) then 
-                    putStrLn "error : this command cannot be looped" 
+                    putStrLn "Error: This command cannot be looped" 
                 else 
-                    putStrLn ("error at line " ++ show l ++ ": this command cannot be looped")
+                    putStrLn ("Error at line " ++ show l ++ ": This command cannot be looped")
                 return st 
