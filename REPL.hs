@@ -43,16 +43,20 @@ process :: REPLState -> Command -> String -> IO ()
 process st Quit inp = putStrLn "Bye"
 
 process st (Set var e) inp = 
-  case eval (vars st) e of
-    Right v -> do
-      putStrLn ("OK : " ++ var ++ " = " ++ show v)
-      let newVars = updateVars var v (vars st)
-          newSt = addHistory st (Set var e) inp  -- Add to history
-          finalSt = newSt { vars = newVars, lastResult = Just v }
-      repl finalSt
-    Left err -> do
-      putStrLn $ "Error: " ++ err
-      repl st
+  if var == "it" then do
+    putStrLn "Error: 'it' is a reserved variable name"
+    repl st
+  else
+    case eval (vars st) e of
+      Right v -> do
+        putStrLn ("OK : " ++ var ++ " = " ++ show v)
+        let newVars = updateVars var v (vars st)
+            newSt = addHistory st (Set var e) inp  -- Add to history
+            finalSt = newSt { vars = newVars, lastResult = Just v }
+        repl finalSt
+      Left err -> do
+        putStrLn $ "Error: " ++ err
+        repl st
 
 process st (Eval e) inp = 
   case eval (vars st) e of
@@ -117,17 +121,24 @@ repl st = do
 -- it is a version of process used when reading a file 
 processFileLine :: REPLState -> Command -> Int -> IO REPLState
 processFileLine st (Set var e) l = 
-  case eval (vars st) e of
-    Right v -> do
-      let newVars = updateVars var v (vars st)
-          finalSt = st { vars = newVars, lastResult = Just v }
-      return finalSt
-    Left err -> do
-      if l == (-1) then 
-           putStrLn $ "Error: " ++ err
-      else 
-           putStrLn $ "Error at line " ++ show l ++ ": " ++ err
-      return st
+  if var == "it" then do
+    if l == (-1) then 
+      putStrLn "Error: 'it' is a reserved variable name"
+    else 
+      putStrLn $ "Error at line " ++ show l ++ ": 'it' is a reserved variable name"
+    return st
+  else
+    case eval (vars st) e of
+      Right v -> do
+        let newVars = updateVars var v (vars st)
+            finalSt = st { vars = newVars, lastResult = Just v }
+        return finalSt
+      Left err -> do
+        if l == (-1) then 
+             putStrLn $ "Error: " ++ err
+        else 
+             putStrLn $ "Error at line " ++ show l ++ ": " ++ err
+        return st
 
 processFileLine st (Eval e) l = 
   case eval (vars st) e of
