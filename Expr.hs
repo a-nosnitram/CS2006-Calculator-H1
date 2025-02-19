@@ -319,10 +319,14 @@ pCommand = do
 
   where 
     command = do 
-           t <- identifier
-           symbol "="
-           e <- pExpr
-           return (Set t e)
+            t <- identifier
+            if t /= "it" then do
+            symbol "="
+            e <- pExpr
+            return (Set t e)
+            else do
+            e <- pExpr
+            return (Eval e)
        ||| token (do 
             e <- pExpr
             return (Eval e))
