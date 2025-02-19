@@ -20,10 +20,11 @@ runFile "filename.txt"
 
 ## calculator commands 
 - `:q` = quit
-- `:1` = go back to command 1 
+- `:n` = go back to command number `n`
 - `:c` = clear command history
 - `#`  = comment
+- `:print` = prints out one or more expressions (concatenated using `++`)
+- `:loop n [ command1 ; command2 ]` = loops commands (excluding `:c`, `:q`, and `:n`) `n` times
 
 ## file commands 
-- `:print` = prints out a `Set` or `Eval` command (other commands lead to errors)
 - `:q`, `:c`, and `:1` are not valid file commands
