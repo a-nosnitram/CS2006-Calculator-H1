@@ -7,7 +7,7 @@ import Control.Applicative hiding (many)
 type Name = String
 
 -- Data type for representing values
-data Value = VInt Int | VFloat Double | VBool Bool deriving (Eq)
+data Value = VInt Int | VFloat Double | VBool Bool | VString String deriving (Eq)
 
 
 instance Show Value where
@@ -16,6 +16,7 @@ instance Show Value where
     | x == fromIntegral (floor x) = show (floor x) -- shows as int for whole numbers
     | otherwise = show x -- float
   show (VBool b) = show b
+  show (VString s) = show s
 
 --Expression datatypes, representing various operations
 data Expr = Add Expr Expr
@@ -23,8 +24,8 @@ data Expr = Add Expr Expr
           | Mul Expr Expr
           | Div Expr Expr
           | Var Name
-       --   | StrVal String
-       --   | Concat Expr Expr 
+          | StrVal String -- for string printing
+          | Concat Expr Expr -- for string printing 
           | Val Value -- literal value (int or float)
           | Power Expr Expr
           | Mod Expr Expr
@@ -54,7 +55,7 @@ data Command = Set Name Expr
              | Comment String -- for commenting 
              | EmptyLine -- to ignore empty lines 
              | Loop Int [Command] -- for loops 
-             | Print Command -- for printing
+             | Print [Expr] -- string-adapted printing 
   deriving (Show, Eq)
 
 -- bianary search tree for storing variables
@@ -76,8 +77,14 @@ eval :: VarTree -> Expr -> Either String Value
 -- Handle numeric values directly
 eval _ (Val v) = Right v
 
+-- Handle strings 
+eval vars (StrVal s) = Right (VString s)
+
 -- Handle variables (look up their value in the variable list)
 eval vars (Var x) = case lookupVar x vars of
+    Just (VString s) -> Right (VString s)
+ --   Just (VInt n) -> Right (VString (show n))
+--    Just (VFloat f) -> Right (VString (show f))
     Just v  -> Right v
     Nothing -> Left $ "Variable not found: " ++ x
 
@@ -103,6 +110,7 @@ eval vars (Sub x y) = do
     (VInt a, VFloat b)   -> Right $ VFloat (fromIntegral a - b)
     (VFloat a, VInt b)   -> Right $ VFloat (a - fromIntegral b)
     _ -> Left "Type mismatch in subtraction: operands must be numeric"
+
 --Multiplication-------------------
 eval vars (Mul x y) = do
   x' <- eval vars x
@@ -113,6 +121,7 @@ eval vars (Mul x y) = do
     (VInt a, VFloat b)   -> Right $ VFloat (fromIntegral a * b)
     (VFloat a, VInt b)   -> Right $ VFloat (a * fromIntegral b)
     _ -> Left "Type mismatch in multiplication: operands must be numeric"
+
 --Division-------------------
 eval vars (Div x y) = do
   x' <- eval vars x
@@ -158,6 +167,21 @@ eval vars (Abs x) = do
   case x' of
     VInt a   -> Right $ VInt (abs a)
     VFloat a -> Right $ VFloat (abs a)
+
+--String Concatenation-------------------
+eval vars (Concat x y) = do 
+   x' <- eval vars x
+   y' <- eval vars y
+   case (x', y') of 
+     (VString a, VString b) -> Right $ VString (a ++ b)
+     (VString a, VInt b) -> Right $ VString (a ++ show b)
+     (VInt a, VString b) -> Right $ VString (show a ++ b)
+     (VFloat a, VString b) -> Right $ VString (show a ++ b)
+     (VString a, VFloat b) -> Right $ VString (a ++ show b)
+     (VBool a, VString b) -> Right $ VString (show a ++ b)
+     (VString a, VBool b) -> Right $ VString (a ++ show b)
+     _ -> Left "Cannot concatenate non-string values"
+
 
 --Trigonometric functions----------------
 --sine
@@ -274,11 +298,6 @@ eval vars (Geq x y) = do
     _ -> Left "Cannot compare values of different types"
 
 
---Concat-----------------
-{- eval vars (Concat x y) = do 
-   x' <- eval vars x
-   y' <- eval vars y
-   return (x' ++ y') -}
 
 -- This is a helper function to convert char to int
 digitToInt :: Char -> Int
@@ -319,8 +338,9 @@ pCommand = do
             return (History (read ns)))
        ||| token (do 
             string ":print"
-            cmd <- command
-            return (Print cmd))
+            space
+            expr <- many1 pExpr 
+            return (Print expr))
        ||| token (do 
             string ":loop"
             space
@@ -354,8 +374,6 @@ pCommand = do
             command)
        return (first:rest)
 
---expression parser
---for add and sub
 -- new parsers for boolean and comparison operators
 pExpr :: Parser Expr
 pExpr = pOr
@@ -396,9 +414,12 @@ pAddSub = do
   rest t
 
 rest :: Expr -> Parser Expr
-rest t = (do symbol "+"
-             e <- pTerm
-             rest (Add t e))
+rest t = (do symbol "++"
+             e <- pExpr
+             return (Concat t e))
+         <|> (do symbol "+"
+                 e <- pTerm
+                 rest (Add t e))
          <|> (do symbol "-"
                  e <- pTerm
                  rest (Sub t e))
@@ -406,10 +427,10 @@ rest t = (do symbol "+"
 
 
 pTerm :: Parser Expr
-pTerm = do
-  symbol "not"
-  e <- pFactor
-  return (Not e)
+pTerm = pStrVal
+  <|> do symbol "not"
+         e <- pFactor
+         return (Not e)
   <|> do symbol "abs"
          symbol "("
          e <- pExpr
@@ -466,10 +487,10 @@ pFactor = do d <- double
                return e
 
 -- This parses strings 
-{- pStrVal :: Parser Expr 
+pStrVal :: Parser Expr 
 pStrVal = do 
    char '"'
    s <- many (sat (\x -> x /= '"'))
    char '"'
-   return (StrVal s) -} 
+   return (StrVal s) 
 
