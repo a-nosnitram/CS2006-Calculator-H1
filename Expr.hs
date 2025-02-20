@@ -188,23 +188,30 @@ eval vars (Concat x y) = do
 eval vars (Sin x) = do
   x' <- eval vars x
   case x' of
-    VInt a   -> Right $ VFloat (sin (fromIntegral a))
-    VFloat a -> Right $ VFloat (sin a)
+        VInt a   -> Right $ VFloat (sin (fromIntegral a))  
+        VFloat a -> Right $ VFloat (sin a)  
+        _        -> Left "Type mismatch: sin expects a number"
 
 --cosine
 eval vars (Cos x) = do
   x' <- eval vars x
   case x' of
-    VInt a   -> Right $ VFloat (cos (fromIntegral a))
-    VFloat a -> Right $ VFloat (cos a)
+        VInt a   -> Right $ VFloat (cos (fromIntegral a))  
+        VFloat a -> Right $ VFloat (cos a)  
+        _        -> Left "Type mismatch: cos expects a number"
 
 --tangent
 eval vars (Tan x) = do
   x' <- eval vars x
   case x' of
-    VInt a   -> Right $ VFloat (tan (fromIntegral a))
-    VFloat a -> Right $ VFloat (tan a)
-
+        VInt a   -> let angle = fromIntegral a
+                    in if abs (cos angle) < 1e-10
+                       then Left "Undefined value for tan(x) at this angle"
+                       else Right $ VFloat (tan angle)
+        VFloat a -> if abs (cos a) < 1e-10
+                    then Left "Undefined value for tan(x) at this angle"
+                    else Right $ VFloat (tan a)
+        _ -> Left "Type mismatch: tan expects a number"
 --boolean operators-------------------------------
 --And (&&)
 eval vars (And x y) = do
@@ -397,15 +404,15 @@ pAnd = do
 pComp :: Parser Expr
 pComp = do
   e1 <- pAddSub
-  (do op <- choice [symbol "==", symbol "!=", symbol "<", symbol ">", symbol "<=", symbol ">="]
+  (do op <- choice [symbol "<=", symbol ">=", symbol "==", symbol "!=", symbol "<", symbol ">"]
       e2 <- pAddSub
       case op of
+        "<=" -> return (Leq e1 e2)
+        ">=" -> return (Geq e1 e2)
         "==" -> return (Eq e1 e2)
         "!=" -> return (Neq e1 e2)
         "<"  -> return (Lt e1 e2)
         ">"  -> return (Gt e1 e2)
-        "<=" -> return (Leq e1 e2)
-        ">=" -> return (Geq e1 e2)
    ) <|> return e1
 
 pAddSub :: Parser Expr
