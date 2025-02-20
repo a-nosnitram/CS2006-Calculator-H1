@@ -7,18 +7,22 @@ y = x + 9
 :print it
 
 # printing strings
-:print "This works !"
+:print "printing strings"
 
 # printing variavles
+z = 0
+:print "variables"
 :print z
 :print z + 1
 
 # printing numbers
+:print "numbers"
 :print 42
 :print 3.1415
 :print -10
 
 # concatenation
+:print "concatenation"
 :print "the answer is : " ++ 42
 :print 3.14 ++ " is a float"
 :print "1==1 is " ++ 1==1
@@ -27,6 +31,7 @@ y = x + 9
 
 # printing within loops
 x = 0
+:print "loop & print"
 :loop 3 [ x = x + 1; :print "x is " ++ x ]
 
 # errors

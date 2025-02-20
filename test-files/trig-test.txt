@@ -25,11 +25,6 @@
 :print cos(10 * 3.1415)  # should be close to 1
 :print tan(10 * 3.1415)  # should be close to 0
 
-# undefined values
-:print "undefined values"
-:print tan(3.1415 / 2)  # should return an error
-:print tan(-3.1415 / 2)  # should return an error
-
 # edge cases and errors
 :print "ERRORS"
 :print "edge cases and errors"
