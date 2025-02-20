@@ -4,21 +4,20 @@ import Expr
 import Expr (VarTree, lookupVar)
 import Parsing
 
--- In REPL.hs
+-- Data type representing the REPL state
 data REPLState = REPLState { 
-  vars :: Expr.VarTree,
-  history :: [Command], 
-  printHis :: [String], -- printable history 
-  lastResult :: Maybe Value  
+  vars :: Expr.VarTree,  -- Variable tree storing name-value pairs
+  history :: [Command],  -- Command execution history
+  printHis :: [String],  -- Printable command history
+  lastResult :: Maybe Value  -- Last computed result
 } deriving (Show, Eq)
 
+-- Initial REPL state with empty history and variables
 initREPLState :: REPLState
 initREPLState = REPLState Empty [] [] Nothing
 
--- Given a variable name and a value, return a new set of variables with
--- that name and value added.
--- If it already exists, remove the old value
-updateVars :: Name -> Value -> VarTree -> VarTree
+-- Update variable tree by adding or replacing a variable
+-- If the variable already exists, its value is updated 
 updateVars name newValue Empty = Node name newValue Empty Empty
 updateVars name newValue (Node n v left right)
   | name < n  = Node n v (updateVars name newValue left) right
@@ -27,21 +26,23 @@ updateVars name newValue (Node n v left right)
 -- filter is a Prelude function that takes a function and a list
 -- and returns the elements of the list that satisfy that condition
 
--- Return a new set of variables with the given name removed
+-- Remove a variable from the list of variables
 dropVar :: Name -> [(Name, Value)] -> [(Name, Value)]
 dropVar name vars = filter (\(x, _) -> x /= name) vars
 
+-- Update the last computed result in the REPL state
 updateLastResult :: Maybe Value -> REPLState -> REPLState
 updateLastResult v st = st {lastResult = v}
 
--- This function adds a command to the command history in the state
+-- Add a command to the command history
 addHistory :: REPLState -> Command -> String -> REPLState
 addHistory st cmd cmdp = st {history = history st ++ [cmd], printHis = printHis st ++ [cmdp]} 
 
--- This function processes commands one by one 
+-- Process commands in the REPL 
 process :: REPLState -> Command -> String -> IO ()
 process st Quit inp = putStrLn "Bye"
 
+-- Process a 'Set' command: evaluates an expression and updates variables
 process st (Set var e) inp = 
   if var == "it" then do
     putStrLn "Error: 'it' is a reserved variable name"
@@ -58,6 +59,7 @@ process st (Set var e) inp =
         putStrLn $ "Error: " ++ err
         repl st
 
+-- Process an 'Eval' command: evaluates an expression and stores it as 'it'
 process st (Eval e) inp = 
   case eval (vars st) e of
     Right v -> do
@@ -70,11 +72,13 @@ process st (Eval e) inp =
       putStrLn $ "Error: " ++ err
       repl st 
 
+-- Process a 'Simplify' command
 process st (Simplify e) inp = do
   let simplified = simplifyExpr e
   putStrLn (show simplified)
   repl st 
 
+-- Process a 'History' command: retrieves and re-executes a command
 process st (History n) inp = 
   if n >= 0 && n < length (history st)
   then do
@@ -84,7 +88,7 @@ process st (History n) inp =
     putStrLn "Error: Invalid command number"
     repl st
 
-
+-- Process a 'Loop' command: executes a sequence of commands n times
 process st (Loop n commands) inp = do
         let newSt = addHistory st (Loop n commands) inp 
         if n == 0 then repl newSt 
@@ -95,24 +99,25 @@ process st (Loop n commands) inp = do
                 st' <- processFileLine newSt (Loop n commands) (-1)
                 repl st'
 
+-- Clears command history
 process st (Clear) inp = do 
         repl st {history = [], printHis = []}
 
+-- Ignore comments in the REPL
 process st (Comment _) inp = do
-        repl st -- do nothing / ignore comments
+        repl st 
 
+-- Ignore empty lines in the REPL
 process st (EmptyLine) inp = do 
-        repl st -- do nothing / ignore empty lines
+        repl st 
 
+-- Process a 'Print' command: evaluates expressions and prints results
 process st (Print exprs) inp = do 
         let newSt = addHistory st (Print exprs) inp
         st' <- processFileLine newSt (Print exprs) (-1)
         repl st'
 
--- Read, Eval, Print Loop
--- This reads and parses the input using the pCommand parser, and calls
--- 'processFileLine to process the command.
--- 'processFileLine will call 'repl' when done, so the system loops.
+-- The main Read-Eval-Print Loop
 repl :: REPLState -> IO ()
 repl st = do
   putStr $ show (length (history st)) ++ " > "
@@ -123,8 +128,7 @@ repl st = do
       putStrLn "Parse Error"
       repl st
 
--- processFileLine has a IO REPLState return type 
--- it is a version of process used when reading a file 
+-- Processes commands from a file, returning a new REPL state
 processFileLine :: REPLState -> Command -> Int -> IO REPLState
 processFileLine st (Set var e) l = 
   if var == "it" then do
@@ -192,11 +196,12 @@ processFileLine st (Loop n commands) l =
                    processFileLine st' (Loop (n-1) commands) l 
 
 processFileLine st (Comment _) l = do
-        return st -- do nothing / ignore comments
+        return st 
 
 processFileLine st (EmptyLine) l = do
         return st
 
+-- Processes multiple expressions for the :print command
 processExprs :: REPLState -> [Expr] -> Int -> IO REPLState
 processExprs st [] _ = return st 
 processExprs st (expr:exprs) l = 
@@ -209,8 +214,9 @@ processExprs st (expr:exprs) l =
                                    putStrLn ("Error: " ++ err)
                                else
                                    putStrLn ("Error at line " ++ show l ++ ": " ++ err)
-                               return st { lastResult = Nothing }
+                               return st { lastResult = Nothing } -- will break the processing 
 
+-- Process multiple commands within a :loop
 processCommands :: REPLState -> [Command] -> Int -> IO REPLState
 processCommands st [] _ = return st
 processCommands st (cmd:cmds) l = 
