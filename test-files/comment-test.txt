@@ -1,0 +1,4 @@
+# this is a standalone comment
+
+x = 10 + 5  # this is an inline comment
+:print "# and this is a string"

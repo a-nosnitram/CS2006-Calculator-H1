@@ -1,0 +1,55 @@
+# boolean literals
+:print "boolean literals"
+:print true
+:print false
+
+# logical AND
+:print "logical AND"
+:print true && true
+:print true && false
+:print false && false
+
+# logical OR
+:print "logical OR"
+:print true || true
+:print true || false
+:print false || false
+
+# logical NOT
+:print "logical NOT"
+:print not true
+:print not false
+
+# equality and inequality
+:print "equality and inequality"
+:print 5 == 5
+:print 5 == 3
+:print 10 != 7
+:print 10 != 10
+
+# greater and less than
+:print "greater and less than"
+:print 10 > 5
+:print 3 < 8
+:print 7 >= 7
+:print 4 <= 5
+
+# boolean variables
+:print "boolean variables"
+x = true
+y = false
+:print x
+:print y
+:print x && y
+:print x || y
+
+# booleans with arithmetic
+:print "booleans with arithmetic"
+:print ((5 > 3) && (10 < 20))
+:print (((2 + 2) == 4) || (false))
+:print (not (5 == 5))
+
+# type mismatch errors
+:print "ERRORS"
+:print true + 1   # should return an error
+:print "hello" && false  # should return an error

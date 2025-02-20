@@ -1,22 +1,32 @@
-# testing loop commands 
+x = 5
+y = 10
 
-x = 0
-
-:loop 3 x = x + 1
+# loop with a single command
+:print "single command"
+:loop 3 [ x = x + 1 ]
 :print x
 
-# that should give an error
-:loop 2 :q
+# loop with multiple commands
+:print "multiple commands"
+:loop 2 [ x = x + 2 ; y = y - 1 ]
+:print x
+:print y
 
-# nothing happens 
-:loop 4 x 
+# nested loops
+:print "nested loops"
+:loop 2 [ :loop 2 [ x = x + 1 ; y = y + 1 ] ]
+:print x
+:print y
 
-# should give a parse error  
-:loop -9 1+1
+# loop with print
+:print "loop & print"
+n = 1
+:loop 3 [ :print "this is a loop " ++ n ; n = n + 1 ]
 
-# x should remain 3, but no error
-:loop 0 x = x + 1
-:print x 
-
-:loop 5 :print x + 1
-
+# error messages
+:print "ERRORS"
+:loop -2 [1+1]
+:loop 3 [:c ; :q; :7]
+:loop 3
+:loop -2
+:loop

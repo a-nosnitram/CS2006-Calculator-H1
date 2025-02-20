@@ -1,6 +1,45 @@
-# comment 
-x = 1 
+
+x = 1
 y = x + 9
-z = x + y
-:print z 
+
+# printing it
+1 + 1
+:print it
+
+# printing strings
+:print "printing strings"
+
+# printing variavles
+z = 0
+:print "variables"
+:print z
 :print z + 1
+
+# printing numbers
+:print "numbers"
+:print 42
+:print 3.1415
+:print -10
+
+# concatenation
+:print "concatenation"
+:print "the answer is : " ++ 42
+:print 3.14 ++ " is a float"
+:print "1==1 is " ++ 1==1
+:print "sum of 10 and 5 is " ++ (10 + 5)
+:print "nested: " ++ ("inner " ++ "concatenation")
+
+# printing within loops
+x = 0
+:print "loop & print"
+:loop 3 [ x = x + 1; :print "x is " ++ x ]
+
+# errors
+:print "ERRORS"
+:print # parse error
+:print ++ "missing first part"
+:print "unclosed string
+:print "mismatched" + "operators"
+:print :c
+:print :q
+:print :7

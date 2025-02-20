@@ -11,7 +11,9 @@ main = do
        case args of 
             [] -> repl initREPLState
             [fileName] -> runFile fileName
-    
+
+-- This function reads a file, retieves its content, splitting it into lines, 
+-- and then calls runCommands on the contents of the file 
 runFile :: String -> IO ()
 runFile fileName = do 
                    contents <- readFile fileName -- retrieving file contetnts 
@@ -19,7 +21,7 @@ runFile fileName = do
                    putStrLn ("reading from file " ++ fileName ++ "\n")
                    runCommands commands initREPLState 1 -- 0 is the number of the line we're on
 
--- similar to repl in REPL.hs, but just runs untill the end of the file insltead 
+-- This function similar to repl in REPL.hs, but just runs untill the end of the file insltead 
 -- of looping back and quits automatically when it has executed all commands 
 -- it also prints out the command before printing out its result 
 runCommands :: [String] -> REPLState -> Int -> IO ()

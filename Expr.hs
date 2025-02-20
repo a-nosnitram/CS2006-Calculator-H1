@@ -22,15 +22,16 @@ import Data.List (groupBy, sortOn)
 type Name = String
 
 -- Data type for representing values
-data Value = VInt Int | VFloat Double | VBool Bool deriving (Eq)
+data Value = VInt Int | VFloat Double | VBool Bool | VString String deriving (Eq)
 
 
 instance Show Value where
   show (VInt x) = show x
   show (VFloat x) 
     | x == fromIntegral (floor x) = show (floor x) -- shows as int for whole numbers
-    | otherwise = show x -- float
+    | otherwise = show (fromIntegral (round (x * 1000000)) / 1000000) -- rounded float to avoid precision errors
   show (VBool b) = show b
+  show (VString s) = show s
 
 --Expression datatypes, representing various operations
 data Expr = Add Expr Expr
@@ -38,6 +39,8 @@ data Expr = Add Expr Expr
           | Mul Expr Expr
           | Div Expr Expr
           | Var Name
+          | StrVal String -- for string printing
+          | Concat Expr Expr -- for string printing 
           | Val Value -- literal value (int or float)
           | Power Expr Expr
           | Mod Expr Expr
@@ -65,14 +68,16 @@ data Command = Set Name Expr
              | Clear -- clears history
              | Comment String -- for commenting 
              | EmptyLine -- to ignore empty lines 
-             | Loop Int Command -- for loops (not yet implemented)
-             | Print Command
+             | Loop Int [Command] -- for loops 
+             | Print [Expr] -- string-adapted printing 
              | Simplify Expr
-  deriving Show
+  deriving (Show, Eq)
 
 -- bianary search tree for storing variables
 data VarTree = Empty
              | Node Name Value VarTree VarTree
+  deriving (Show, Eq)
+
 
 lookupVar :: Name -> VarTree -> Maybe Value
 lookupVar _ Empty = Nothing
@@ -87,10 +92,17 @@ eval :: VarTree -> Expr -> Either String Value
 -- Handle numeric values directly
 eval _ (Val v) = Right v
 
+-- Handle strings 
+eval vars (StrVal s) = Right (VString s)
+
 -- Handle variables (look up their value in the variable list)
 eval vars (Var x) = case lookupVar x vars of
+    Just (VString s) -> Right (VString s)
+ --   Just (VInt n) -> Right (VString (show n))
+--    Just (VFloat f) -> Right (VString (show f))
     Just v  -> Right v
     Nothing -> Left $ "Variable not found: " ++ x
+
 
 --Addition--------------------
 eval vars (Add x y) = do
@@ -113,6 +125,7 @@ eval vars (Sub x y) = do
     (VInt a, VFloat b)   -> Right $ VFloat (fromIntegral a - b)
     (VFloat a, VInt b)   -> Right $ VFloat (a - fromIntegral b)
     _ -> Left "Type mismatch in subtraction: operands must be numeric"
+
 --Multiplication-------------------
 eval vars (Mul x y) = do
   x' <- eval vars x
@@ -123,6 +136,7 @@ eval vars (Mul x y) = do
     (VInt a, VFloat b)   -> Right $ VFloat (fromIntegral a * b)
     (VFloat a, VInt b)   -> Right $ VFloat (a * fromIntegral b)
     _ -> Left "Type mismatch in multiplication: operands must be numeric"
+
 --Division-------------------
 eval vars (Div x y) = do
   x' <- eval vars x
@@ -169,28 +183,50 @@ eval vars (Abs x) = do
     VInt a   -> Right $ VInt (abs a)
     VFloat a -> Right $ VFloat (abs a)
 
+--String Concatenation-------------------
+eval vars (Concat x y) = do 
+   x' <- eval vars x
+   y' <- eval vars y
+   case (x', y') of 
+     (VString a, VString b) -> Right $ VString (a ++ b)
+     (VString a, VInt b) -> Right $ VString (a ++ show b)
+     (VInt a, VString b) -> Right $ VString (show a ++ b)
+     (VFloat a, VString b) -> Right $ VString (show a ++ b)
+     (VString a, VFloat b) -> Right $ VString (a ++ show b)
+     (VBool a, VString b) -> Right $ VString (show a ++ b)
+     (VString a, VBool b) -> Right $ VString (a ++ show b)
+     _ -> Left "Cannot concatenate non-string values"
+
+
 --Trigonometric functions----------------
 --sine
 eval vars (Sin x) = do
   x' <- eval vars x
   case x' of
-    VInt a   -> Right $ VFloat (sin (fromIntegral a))
-    VFloat a -> Right $ VFloat (sin a)
+        VInt a   -> Right $ VFloat (sin (fromIntegral a))  
+        VFloat a -> Right $ VFloat (sin a)  
+        _        -> Left "Type mismatch: sin expects a number"
 
 --cosine
 eval vars (Cos x) = do
   x' <- eval vars x
   case x' of
-    VInt a   -> Right $ VFloat (cos (fromIntegral a))
-    VFloat a -> Right $ VFloat (cos a)
+        VInt a   -> Right $ VFloat (cos (fromIntegral a))  
+        VFloat a -> Right $ VFloat (cos a)  
+        _        -> Left "Type mismatch: cos expects a number"
 
 --tangent
 eval vars (Tan x) = do
   x' <- eval vars x
   case x' of
-    VInt a   -> Right $ VFloat (tan (fromIntegral a))
-    VFloat a -> Right $ VFloat (tan a)
-
+        VInt a   -> let angle = fromIntegral a
+                    in if abs (cos angle) < 1e-10
+                       then Left "Undefined value for tan(x) at this angle"
+                       else Right $ VFloat (tan angle)
+        VFloat a -> if abs (cos a) < 1e-10
+                    then Left "Undefined value for tan(x) at this angle"
+                    else Right $ VFloat (tan a)
+        _ -> Left "Type mismatch: tan expects a number"
 --boolean operators-------------------------------
 --And (&&)
 eval vars (And x y) = do
@@ -284,29 +320,31 @@ eval vars (Geq x y) = do
     _ -> Left "Cannot compare values of different types"
 
 
---helper function to convert char to int
+
+-- This is a helper function to convert char to int
 digitToInt :: Char -> Int
 digitToInt x = fromEnum x - fromEnum '0'
 
--- function for converting multiple digits to integers
-stringToInt :: String -> Int 
-stringToInt ns = foldl (\a x -> a * 10 + digitToInt x) 0 ns
+-- This is a function for converting multiple digits (strings of digits) to integers
+-- stringToInt :: String -> Int 
+-- stringToInt ns = foldl (\a x -> a * 10 + digitToInt x) 0 ns
 
 -- added token to ignore leading and trailing spaces
 pCommand :: Parser Command
-pCommand = do 
+pCommand = do
+              space
               cmd <- command -- parsing main command 
               Parsing.many comment
               return cmd
            ||| do comment
-           ||| do emptyLine 
+           ||| do emptyLine     
 
   where 
     command = do 
-           t <- identifier
-           symbol "="
-           e <- pExpr
-           return (Set t e)
+            t <- identifier
+            symbol "="
+            e <- pExpr
+            return (Set t e)
        ||| token (do 
             e <- pExpr
             return (Eval e))
@@ -314,21 +352,30 @@ pCommand = do
             string ":q" -- allows quit
             return Quit) -- allows quit
        ||| token (do 
-           string ":c"
-           return Clear) -- allows to clear history
+            string ":c"
+            return Clear) -- allows to clear history
        ||| token (do 
             char ':'  -- command history 
             ns <- many1 digit -- multiple digits
             return (History (read ns)))
        ||| token (do 
-           string ":print"
-           cmd <- command
-           return (Print cmd))
+            string ":print"
+            space
+            expr <- many1 pExpr 
+            return (Print expr))
        ||| token (do 
-           string ":loop "
-           ns <- many1 digit 
-           cmd <- command
-           return (Loop (read ns) cmd))
+            string ":loop"
+            space
+            ns <- many1 digit 
+            space
+            char '['
+            space
+            cmds <- parseCommands 
+            space
+            char ']'
+            space
+            return (Loop (read ns) cmds))
+
        ||| token (do
             symbol ":simplify"
             e <- pExpr
@@ -343,10 +390,16 @@ pCommand = do
                 Parsing.many (sat (\x -> x `elem` " \t"))
                 return EmptyLine)
 
+    parseCommands :: Parser [Command]
+    parseCommands = do 
+       first <- command
+       rest <- many (do 
+            space
+            char ';'
+            space
+            command)
+       return (first:rest)
 
-
---expression parser
---for add and sub
 -- new parsers for boolean and comparison operators
 pExpr :: Parser Expr
 pExpr = pOr
@@ -370,15 +423,15 @@ pAnd = do
 pComp :: Parser Expr
 pComp = do
   e1 <- pAddSub
-  (do op <- choice [symbol "==", symbol "!=", symbol "<", symbol ">", symbol "<=", symbol ">="]
+  (do op <- choice [symbol "<=", symbol ">=", symbol "==", symbol "!=", symbol "<", symbol ">"]
       e2 <- pAddSub
       case op of
+        "<=" -> return (Leq e1 e2)
+        ">=" -> return (Geq e1 e2)
         "==" -> return (Eq e1 e2)
         "!=" -> return (Neq e1 e2)
         "<"  -> return (Lt e1 e2)
         ">"  -> return (Gt e1 e2)
-        "<=" -> return (Leq e1 e2)
-        ">=" -> return (Geq e1 e2)
    ) <|> return e1
 
 pAddSub :: Parser Expr
@@ -387,9 +440,12 @@ pAddSub = do
   rest t
 
 rest :: Expr -> Parser Expr
-rest t = (do symbol "+"
-             e <- pTerm
-             rest (Add t e))
+rest t = (do symbol "++"
+             e <- pExpr
+             return (Concat t e))
+         <|> (do symbol "+"
+                 e <- pTerm
+                 rest (Add t e))
          <|> (do symbol "-"
                  e <- pTerm
                  rest (Sub t e))
@@ -397,10 +453,10 @@ rest t = (do symbol "+"
 
 
 pTerm :: Parser Expr
-pTerm = do
-  symbol "not"
-  e <- pFactor
-  return (Not e)
+pTerm = pStrVal
+  <|> do symbol "not"
+         e <- pFactor
+         return (Not e)
   <|> do symbol "abs"
          symbol "("
          e <- pExpr
@@ -437,6 +493,9 @@ pTerm = do
           <|> return f)
 
 
+-- This is the factor parser with 
+-- added multi-digit support
+-- and negative number support
 pFactor :: Parser Expr
 pFactor = do
     -- Parse negative numbers
@@ -741,4 +800,13 @@ addValues (VFloat a) (VFloat b) = VFloat (a + b)
 addValues (VInt a) (VFloat b) = VFloat (fromIntegral a + b)
 addValues (VFloat a) (VInt b) = VFloat (a + fromIntegral b)
 
+
+
+-- This parses strings 
+pStrVal :: Parser Expr 
+pStrVal = do 
+   char '"'
+   s <- many (sat (\x -> x /= '"'))
+   char '"'
+   return (StrVal s) 
 
