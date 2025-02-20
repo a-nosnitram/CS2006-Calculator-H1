@@ -14,7 +14,7 @@ instance Show Value where
   show (VInt x) = show x
   show (VFloat x) 
     | x == fromIntegral (floor x) = show (floor x) -- shows as int for whole numbers
-    | otherwise = show x -- float
+    | otherwise = show (fromIntegral (round (x * 1000000)) / 1000000) -- rounded float to avoid precision errors
   show (VBool b) = show b
   show (VString s) = show s
 
