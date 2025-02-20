@@ -1,0 +1,38 @@
+# trigonometric functions
+:print "trig functions"
+:print sin(0)  # should be 0
+:print sin(3.1415 / 2)  # should be close to 1
+:print cos(0)  # should be 1
+:print cos(3.1415)  # should be close to -1
+:print tan(0)  # should be 0
+:print tan(3.1415 / 4)  # should be close to 1
+
+# negative angles
+:print "negative angles"
+:print sin(-3.1415 / 2)  # should be close to -1
+:print cos(-3.1415)  # should be close to -1
+:print tan(-3.1415 / 4)  # should be close to -1
+
+# large angles
+:print "large angles"
+:print sin(10 * 3.1415)  # should be close to 0
+:print cos(10 * 3.1415)  # should be close to 1
+:print tan(10 * 3.1415)  # should be close to 0
+
+# large angles
+:print "large angles"
+:print sin(10 * 3.1415)  # should be close to 0
+:print cos(10 * 3.1415)  # should be close to 1
+:print tan(10 * 3.1415)  # should be close to 0
+
+# undefined values
+:print "undefined values"
+:print tan(3.1415 / 2)  # should return an error
+:print tan(-3.1415 / 2)  # should return an error
+
+# edge cases and errors
+:print "ERRORS"
+:print "edge cases and errors"
+:print sin("text")  # should return an error
+:print cos(True)  # should return an error
+:print tan(5 / 0)  # should return an error

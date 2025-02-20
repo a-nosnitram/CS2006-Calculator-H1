@@ -1,37 +1,32 @@
-# Testing basic variable assignment
 x = 5
 y = 10
 
-1 + 3
-:print it + 1
+# loop with a single command
+:print "single command"
+:loop 3 [ x = x + 1 ]
+:print x
 
-# Testing :print command
+# loop with multiple commands
+:print "multiple commands"
+:loop 2 [ x = x + 2 ; y = y - 1 ]
 :print x
 :print y
-:print x + y
-:print 1/5 * 4
 
-# Testing :loop with a single command
-:loop 3 [ x = x + 1 ]
-:print x  # Expected: x increased by 3 
-
-# Testing :loop with multiple commands
-:loop 2 [ x = x + 2 ; y = y - 1 ]
-:print x  # Expected: x increased by 4
-:print y  # Expected: y decreased by 2
-
-# Testing nested loops
+# nested loops
+:print "nested loops"
 :loop 2 [ :loop 2 [ x = x + 1 ; y = y + 1 ] ]
-:print x  # Expected: x increased by 4
-:print y  # Expected: y increased by 4
+:print x
+:print y
 
-# Testing for error messages 
-:loop -2 [1+1] # parse error 
-:loop 3 [:c ; :q; :7] # commands cannot be looped
-:print :c # error : cannot use command in file 
-:print :q # error : cannot use command in file 
-:print :7 # error : cannot use command in file 
-:print # parse error 
+# loop with print
+:print "loop & print"
+n = 1
+:loop 3 [ :print "this is a loop " ++ n ; n = n + 1 ]
 
-:loop 3 [ :print 2 ] 
-
+# error messages
+:print "ERRORS"
+:loop -2 [1+1]
+:loop 3 [:c ; :q; :7]
+:loop 3
+:loop -2
+:loop

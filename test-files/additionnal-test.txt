@@ -1,0 +1,41 @@
+# modulus operator
+:print "modulus operator"
+:print 10 % 3  # should return 1
+:print 20 % 7  # should return 6
+:print -10 % 4  # should return -2
+:print 15.5 % 4.2  # should return 2.9
+
+# exponentiation
+:print "exponentiation"
+:print 2 ^ 3  # should return 8
+:print 5 ^ 2  # should return 25
+:print 4.5 ^ 2  # should return 20.25
+:print (-3) ^ 3  # should return -27
+:print 2 ^ 0  # should return 1
+
+# absolute value
+:print "absolut value"
+:print abs(-10)
+:print abs(3.5)
+:print abs(-7.2)
+
+# edge cases
+:print "edge cases"
+:print abs(-0)  # should return 0
+:print 10 % 0  # should return an error
+:print (-2) ^ 3  # should return -8
+:print 0 ^ 5  # should return 0
+:print 5 ^ (-2)  # should return an error (negative exponent)
+
+# mixed operations
+:print "mixed operations"
+:print abs(-5) ^ 2  # should return 25
+:print (10 % 4) ^ 3  # should return 8
+:print abs(-3.5) * (5 % 2)  # should return 3.5
+
+# errors and type mismatches
+:print "ERRORS"
+:print abs("text")  # should return an error
+:print "hello" % 5  # should return an error
+:print abs(True)  # should return an error
+:print 2.5 ^ "world"  # should return an error

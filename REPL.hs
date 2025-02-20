@@ -168,11 +168,11 @@ processFileLine st (Loop n commands) l =
                return st
         else if n == 0 then return st 
         else do  
-               st' <- processCommands st commands l
-               if st' == st then 
-                   return st
+               st' <- processCommands st commands l        
+               if lastResult st' == Nothing then -- check if error occured 
+                   return st' -- break loop, if so 
                else 
-                   processFileLine st' (Loop (n-1) commands) l
+                   processFileLine st' (Loop (n-1) commands) l 
 
 processFileLine st (Comment _) l = do
         return st -- do nothing / ignore comments
@@ -181,7 +181,7 @@ processFileLine st (EmptyLine) l = do
         return st
 
 processExprs :: REPLState -> [Expr] -> Int -> IO REPLState
-processExprs st [] _ = return st
+processExprs st [] _ = return st 
 processExprs st (expr:exprs) l = 
         case eval (vars st) expr of 
                 Right v -> do putStrLn (">> " ++ show v)
@@ -192,7 +192,7 @@ processExprs st (expr:exprs) l =
                                    putStrLn ("Error: " ++ err)
                                else
                                    putStrLn ("Error at line " ++ show l ++ ": " ++ err)
-                               processExprs st exprs l
+                               return st { lastResult = Nothing }
 
 processCommands :: REPLState -> [Command] -> Int -> IO REPLState
 processCommands st [] _ = return st
@@ -215,4 +215,4 @@ processCommands st (cmd:cmds) l =
                     putStrLn "Error: This command cannot be looped" 
                 else 
                     putStrLn ("Error at line " ++ show l ++ ": This command cannot be looped")
-                return st 
+                return st { lastResult = Nothing } -- this will break the loop 
