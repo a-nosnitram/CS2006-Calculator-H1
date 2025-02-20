@@ -485,9 +485,7 @@ pTerm = pStrVal
                  return (Mod f t)
           <|> return f)
 
--- This is the factor parser with 
--- added multi-digit support
--- and negative number support
+
 pFactor = do
     -- Parse negative variables
     symbol "-"
@@ -513,7 +511,7 @@ pFactor = do
          return e
 
 
--------------------------------------------------------------------
+---Simplify-------------------------------------------------------------
 instance Show Expr where
   show (Add e1 e2) = 
     case e2 of
@@ -598,21 +596,23 @@ groupLikeTerms terms =
                                     _     -> (nums, e : vars)
                         ) ([], []) terms
 
-    -- Sum all numbers together
+    -- Sum all numbers together (handles both VInt and VFloat)
     sumNumbers = case numbers of
       [] -> Nothing
-      vals -> Just (Val (foldr addValues (VInt 0) vals))
+      vals -> Just (foldr addValues (VInt 0) vals) 
 
     -- Sort variables by their name key and group
     sortedVars = sortOn varNameKey variables
     groupedVars = map sumVariableGroup $ groupBy sameVarName sortedVars
     
   in
-    -- If the sum of numbers is 0, ignore it. Otherwise, combine the results
+    -- Combine the summed numbers with grouped variables
     case sumNumbers of
-      Just (Val (VInt 0)) -> groupedVars  -- If sum is 0, ignore it
-      Just v -> v : groupedVars
+      Just (VInt 0) -> groupedVars  -- Ignore zero
+      Just (VFloat 0.0) -> groupedVars
+      Just v -> Val v : groupedVars  -- Add summed constant
       Nothing -> groupedVars
+
 
 -- Function to sum a group of like terms
 sumVariableGroup :: [Expr] -> Expr
@@ -650,8 +650,20 @@ simplifyExpr (Add e1 e2) =
       simplifiedTerms = collectTerms (Add e1' e2') -- Collect all terms
       groupedTerms = groupLikeTerms simplifiedTerms -- Group like terms
   in case groupedTerms of
-       [Mul (Val (VInt (-1))) (Var x), Mul (Val (VInt c)) (Var y)]
-          | x == y -> Mul (Val (VInt (c - 1))) (Var x)  -- Example: -x + 3*x → 2*x
+       -- Handle mixed float and integer coefficients (e.g., `2.5*x + 3*x`)
+       [Mul (Val (VFloat c1)) (Var x), Mul (Val (VFloat c2)) (Var y)]
+          | x == y -> Mul (Val (VFloat (c1 + c2))) (Var x)  -- Combine float coefficients
+
+       [Mul (Val (VInt c1)) (Var x), Mul (Val (VFloat c2)) (Var y)]
+          | x == y -> Mul (Val (VFloat (fromIntegral c1 + c2))) (Var x)  -- Combine int and float
+
+       [Mul (Val (VFloat c1)) (Var x), Mul (Val (VInt c2)) (Var y)]
+          | x == y -> Mul (Val (VFloat (c1 + fromIntegral c2))) (Var x)  -- Combine float and int
+
+       -- Handle integer coefficients (already works)
+       [Mul (Val (VInt c1)) (Var x), Mul (Val (VInt c2)) (Var y)]
+          | x == y -> Mul (Val (VInt (c1 + c2))) (Var x)  -- Combine integer coefficients
+
        [single] -> single  -- If there's only one term, return it directly
        terms -> foldr1 Add terms  -- Otherwise, reconstruct the expression
 
@@ -668,11 +680,11 @@ simplifyExpr (Sub e1 e2) =
     (Val (VFloat a), Val (VInt b)) -> Val (VFloat (a - fromIntegral b))
 
     -- Edge cases for zero
-    (e', Val (VInt 0)) -> e'  -- x - 0 → x
-    (Val (VInt 0), e') -> Mul (Val (VInt (-1))) e'  -- 0 - x → -x
-    (e1', e2') | e1' == e2' -> Val (VInt 0)  -- x - x → 0
+    (e', Val (VInt 0)) -> e'  -- x - 0 -> x
+    (Val (VInt 0), e') -> Mul (Val (VInt (-1))) e'  -- 0 - x -> -x
+    (e1', e2') | e1' == e2' -> Val (VInt 0)  -- x - x -> 0
 
-    -- Subtracting variable terms with coefficients (e.g., 5x - 3x → 2x)
+    -- Subtracting variable terms with coefficients (e.g., 5x - 3x -> 2x)
     (Mul (Val (VInt c1)) (Var x), Mul (Val (VInt c2)) (Var y)) | x == y ->
       let newCoeff = c1 - c2
       in if newCoeff == 0 then Val (VInt 0)
@@ -684,11 +696,11 @@ simplifyExpr (Sub e1 e2) =
 
     -- Convert a - b into a + (-b) and simplify
     _ ->
-      let simplified = Add e1' (Mul (Val (VInt (-1))) e2')  -- Fixed parenthesis
+      let simplified = Add e1' (Mul (Val (VInt (-1))) e2') 
           simplified' = simplifyExpr simplified 
       in simplified'  -- Use the simplified expression
 
--- Multiplication Simplifications
+
 simplifyExpr (Mul e1 e2) =
   let e1' = simplifyExpr e1
       e2' = simplifyExpr e2
@@ -705,25 +717,23 @@ simplifyExpr (Mul e1 e2) =
     (Val (VInt 0), _) -> Val (VInt 0)
     (_, Val (VInt 0)) -> Val (VInt 0)
 
-    -- Multiplication of like variables (`x * x` → `x^2`)
+    -- Multiplication of like variables (x * x -> x^2)
     (Var x, Var y) | x == y -> Power (Var x) (Val (VInt 2))
 
-    -- Multiplication of `x^a * x` → `x^(a+1)`
+    -- Multiplication of x^a * x -> x^(a+1) (Fix for x^2 * x)
     (Power (Var x1) (Val (VInt a)), Var x2) | x1 == x2 ->
         Power (Var x1) (Val (VInt (a + 1)))
 
-    -- Multiplication of `x * x^b` → `x^(b+1)`
+    -- Multiplication of x * x^b -> x^(b+1)
     (Var x1, Power (Var x2) (Val (VInt b))) | x1 == x2 ->
         Power (Var x1) (Val (VInt (b + 1)))
 
-    -- Multiplication of `x^a * x^b` → `x^(a+b)`
+    -- Multiplication of x^a * x^b -> x^(a+b)
     (Power (Var x1) (Val (VInt a)), Power (Var x2) (Val (VInt b))) | x1 == x2 ->
         Power (Var x1) (Val (VInt (a + b)))
 
     -- Default case: return the expression unchanged
     _ -> Mul e1' e2'
-
-
 
 
 -- Division Simplifications
@@ -735,18 +745,18 @@ simplifyExpr (Div e1 e2) =
     (Val (VInt a), Val (VInt b)) | b /= 0 && a `mod` b == 0 -> Val (VInt (a `div` b))
     (Val (VFloat a), Val (VFloat b)) | b /= 0 -> Val (VFloat (a / b))
 
-    -- Edge case: x / 1 → x
+    -- Edge case: x / 1 -> x
     (e, Val (VInt 1)) -> e
     (e, Val (VFloat 1.0)) -> e
 
-    -- x / x → 1
+    -- x / x -> 1
     (Var x, Var y) | x == y -> Val (VInt 1)
 
-    -- (c * x) / c → x  (e.g., (2x) / 2 → x)
+    -- (c * x) / c -> x  (e.g., (2x) / 2 -> x)
     (Mul (Val (VInt c)) v, Val (VInt d)) | d /= 0 && c `mod` d == 0 ->
         if c `div` d == 1 then v else Mul (Val (VInt (c `div` d))) v
 
-    -- (ax + b) / a → x + (b / a) (e.g., (2x + 4) / 2 → x + 2)
+    -- (ax + b) / a -> x + (b / a) (e.g., (2x + 4) / 2 -> x + 2)
     (Add (Mul (Val (VInt a)) x) (Val (VInt b)), Val (VInt c))
       | a == c && c /= 0 && b `mod` c == 0 -> Add x (Val (VInt (b `div` c)))
       | a == c && c /= 0 -> Add x (Div (Val (VInt b)) (Val (VInt c)))
@@ -756,13 +766,13 @@ simplifyExpr (Div e1 e2) =
       | c1 `mod` c == 0 && c2 `mod` c == 0 -> Add (Mul (Val (VInt (c1 `div` c))) x)
                                                  (Mul (Val (VInt (c2 `div` c))) y)
 
-    -- Distribute division over addition (e.g., (6x + 3) / 3 → 2x + 1)
+    -- Distribute division over addition (e.g., (6x + 3) / 3 -> 2x + 1)
     (Add t1 t2, Val (VInt d)) | d /= 0 ->
       let t1' = simplifyExpr (Div t1 (Val (VInt d)))
           t2' = simplifyExpr (Div t2 (Val (VInt d)))
       in Add t1' t2'
 
-    -- Power simplification: x^a / x^b → x^(a-b)
+    -- Power simplification: x^a / x^b -> x^(a-b)
     (Power x1 n1, Power x2 n2) | x1 == x2 -> Power x1 (Sub n1 n2)
 
     -- Distribute division over addition and simplify the result
@@ -791,4 +801,5 @@ pStrVal = do
    s <- many (sat (\x -> x /= '"'))
    char '"'
    return (StrVal s) 
+
 

@@ -15,7 +15,7 @@ main
 ### reading commands from a file 
 ```
 ghci Main.hs 
-runFile "filename.txt"
+runFile "test-files/filename.txt"
 ```
 
 ## calculator commands 

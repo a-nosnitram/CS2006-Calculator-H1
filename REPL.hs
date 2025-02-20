@@ -179,6 +179,12 @@ processFileLine st (History n) l = do
         putStrLn $ "Error at line " ++ show l ++ ": History command is not allowed within a file"
         return st
 
+processFileLine st (Simplify e) l = do
+  let simplified = simplifyExpr e
+  putStrLn (">> " ++ show simplified)
+  return st
+
+
 
 processFileLine st (Loop n commands) l =
         if n < 0 then do

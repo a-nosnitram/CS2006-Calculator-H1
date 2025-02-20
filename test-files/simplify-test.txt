@@ -1,0 +1,42 @@
+#basic operations
+:simplify 1 * x
+:simplify 0 * x
+:simplify x * 0
+:simplify x - x
+:simplify -x + x
+:simplify x - 0
+:simplify 0 - x
+:simplify x / x
+:simplify 1 * (x + y)
+:simplify 0 * (x + y)
+:simplify 2*x + 3*x
+:simplify 2*x+x
+:simplify x * y
+
+#Negative Coefficients
+:simplify -x + 3*x
+:simplify -2*x + 3*x
+:simplify -x - x
+:simplify (-x + 2*x) / x
+
+#Combining Constants
+:simplify 5 + 3 + x - 2
+:simplify 3*x - 2*x + 5 - 3
+:simplify 2*x + 3*y + 4*x
+:simplify x + y + x + y + x
+:simplify 2*x + 3*y + 4*x  
+:simplify (2*x) * (3*y)
+
+#Division of Linear Terms
+:simplify (6*x + 3)/3
+:simplify (6*x - 3)/3
+:simplify (4*x + 2) / 2
+
+#Nested Expressions (Fixed)
+:simplify (x + x) + (x + x)
+:simplify (2*x + 3) + (5 + 3*x)
+
+#Power Simplification
+:simplify x * x
+:simplify 3*x * x^2
+:simplify x * x^2
