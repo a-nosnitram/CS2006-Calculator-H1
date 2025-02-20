@@ -47,14 +47,13 @@ process st (Set var e) inp =
     Right v -> do
       putStrLn ("OK : " ++ var ++ " = " ++ show v)
       let newVars = updateVars var v (vars st)
-          newSt = addHistory st (Set var e) inp  -- Add to history
+          newSt = addHistory st (Set var e) inp
           finalSt = newSt { vars = newVars, lastResult = Just v }
       repl finalSt
     Left err -> do
       putStrLn $ "Error: " ++ err
       repl st
 
--- repl print result when evluating expression         
 process st (Eval e) inp = 
   case eval (vars st) e of
     Right v -> do
@@ -67,6 +66,11 @@ process st (Eval e) inp =
       putStrLn $ "Error: " ++ err
       repl st 
 
+process st (Simplify e) inp = do
+  let simplified = simplifyExpr e
+  putStrLn (show simplified)
+  repl st 
+
 process st (History n) inp = 
   if n >= 0 && n < length (history st)
   then do
@@ -75,6 +79,7 @@ process st (History n) inp =
   else do
     putStrLn "error : Invalid command number"
     repl st
+
 
 process st (Loop n command) inp = do
         let newSt = addHistory st (Loop n command) inp 
@@ -194,3 +199,4 @@ processFileLine st (Comment _) l = do
 
 processFileLine st (EmptyLine) l = do
         return st
+
