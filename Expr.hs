@@ -9,7 +9,7 @@ type Name = String
 -- Data type for representing values
 data Value = VInt Int | VFloat Double | VBool Bool | VString String deriving (Eq)
 
-
+-- Custom display logic for Value instance
 instance Show Value where
   show (VInt x) = show x
   show (VFloat x) 
@@ -18,52 +18,51 @@ instance Show Value where
   show (VBool b) = show b
   show (VString s) = show s
 
---Expression datatypes, representing various operations
-data Expr = Add Expr Expr
-          | Sub Expr Expr
-          | Mul Expr Expr
-          | Div Expr Expr
-          | Var Name
-          | StrVal String -- for string printing
-          | Concat Expr Expr -- for string printing 
-          | Val Value -- literal value (int or float)
-          | Power Expr Expr
-          | Mod Expr Expr
-          | Abs Expr
-          | Sin Expr
-          | Cos Expr
-          | Tan Expr
-          --boolean and comparason operations
-          | And Expr Expr
-          | Or Expr Expr
-          | Not Expr
-          | Eq Expr Expr    -- ==
-          | Neq Expr Expr   -- !=
-          | Lt Expr Expr    -- <
-          | Gt Expr Expr    -- >
-          | Leq Expr Expr   -- <=
-          | Geq Expr Expr   -- >=
-  deriving (Show, Eq)
+-- Expression data type representing arithmetic, boolean, and comparison operations
+data Expr = Add Expr Expr   -- Addition
+          | Sub Expr Expr   -- Subtraction
+          | Mul Expr Expr   -- Multiplication
+          | Div Expr Expr   -- Division
+          | Var Name        -- Variable reference
+          | StrVal String   -- String literal
+          | Concat Expr Expr -- String concatenation
+          | Val Value       -- Literal values (integers, floats, booleans, strings)
+          | Power Expr Expr -- Exponentiation
+          | Mod Expr Expr   -- Modulo operation
+          | Abs Expr        -- Absolute value
+          | Sin Expr        -- Sine function
+          | Cos Expr        -- Cosine function
+          | Tan Expr        -- Tangent function
+          | And Expr Expr   -- Boolean AND
+          | Or Expr Expr    -- Boolean OR
+          | Not Expr        -- Boolean NOT
+          | Eq Expr Expr    -- Equality (==)
+          | Neq Expr Expr   -- Inequality (!=)
+          | Lt Expr Expr    -- Less than (<)
+          | Gt Expr Expr    -- Greater than (>)
+          | Leq Expr Expr   -- Less than or equal (<=)
+          | Geq Expr Expr   -- Greater than or equal (>=)
+          deriving (Show, Eq)
 
 
---Commands for REPL
-data Command = Set Name Expr
-             | Eval Expr
-             | Quit --allows quit
-             | History Int -- get command history
-             | Clear -- clears history
-             | Comment String -- for commenting 
-             | EmptyLine -- to ignore empty lines 
-             | Loop Int [Command] -- for loops 
-             | Print [Expr] -- string-adapted printing 
-  deriving (Show, Eq)
+-- Commands for a REPL (Read-Eval-Print Loop)
+data Command = Set Name Expr  -- Assign variable
+             | Eval Expr      -- Evaluate an expression
+             | Quit          -- Exit the REPL
+             | History Int   -- Get command history
+             | Clear         -- Clear history
+             | Comment String -- Comments in input
+             | EmptyLine     -- Ignore empty lines
+             | Loop Int [Command] -- Loop command for repeated execution
+             | Print [Expr]  -- Print command for displaying expressions
+             deriving (Show, Eq)
 
--- bianary search tree for storing variables
+-- Binary search tree for storing variable values
 data VarTree = Empty
              | Node Name Value VarTree VarTree
   deriving (Show, Eq)
 
-
+-- Function to lookup a variable's value in the binary search tree
 lookupVar :: Name -> VarTree -> Maybe Value
 lookupVar _ Empty = Nothing
 lookupVar name (Node n v left right)
@@ -71,7 +70,7 @@ lookupVar name (Node n v left right)
   | name < n   = lookupVar name left
   | otherwise  = lookupVar name right
 
--- evaluator function for epressions
+-- Evaluator function for expressions
 eval :: VarTree -> Expr -> Either String Value
 
 -- Handle numeric values directly
@@ -83,8 +82,6 @@ eval vars (StrVal s) = Right (VString s)
 -- Handle variables (look up their value in the variable list)
 eval vars (Var x) = case lookupVar x vars of
     Just (VString s) -> Right (VString s)
- --   Just (VInt n) -> Right (VString (show n))
---    Just (VFloat f) -> Right (VString (show f))
     Just v  -> Right v
     Nothing -> Left $ "Variable not found: " ++ x
 
@@ -212,6 +209,7 @@ eval vars (Tan x) = do
                     then Left "Undefined value for tan(x) at this angle"
                     else Right $ VFloat (tan a)
         _ -> Left "Type mismatch: tan expects a number"
+
 --boolean operators-------------------------------
 --And (&&)
 eval vars (And x y) = do
@@ -260,7 +258,7 @@ eval vars (Neq x y) = do
     (VBool a, VBool b)   -> Right $ VBool (a /= b)
     _ -> Left "Cannot compare values of different types" 
 
---Less Than
+--Less Than (<)
 eval vars (Lt x y) = do
   x' <- eval vars x
   y' <- eval vars y
@@ -271,7 +269,7 @@ eval vars (Lt x y) = do
     (VFloat a, VInt b)   -> Right $ VBool (a < fromIntegral b)
     _ -> Left "Cannot compare values of different types"
 
---Greater Than
+--Greater Than (>)
 eval vars (Gt x y) = do
   x' <- eval vars x
   y' <- eval vars y
@@ -304,17 +302,11 @@ eval vars (Geq x y) = do
     (VFloat a, VInt b)   -> Right $ VBool (a >= fromIntegral b)
     _ -> Left "Cannot compare values of different types"
 
-
-
--- This is a helper function to convert char to int
+-- Helper function to convert char to int
 digitToInt :: Char -> Int
 digitToInt x = fromEnum x - fromEnum '0'
 
--- This is a function for converting multiple digits (strings of digits) to integers
--- stringToInt :: String -> Int 
--- stringToInt ns = foldl (\a x -> a * 10 + digitToInt x) 0 ns
-
--- added token to ignore leading and trailing spaces
+-- Parser for commands
 pCommand :: Parser Command
 pCommand = do
               space
@@ -334,14 +326,14 @@ pCommand = do
             e <- pExpr
             return (Eval e))
        ||| token (do 
-            string ":q" -- allows quit
-            return Quit) -- allows quit
+            string ":q" 
+            return Quit) 
        ||| token (do 
             string ":c"
-            return Clear) -- allows to clear history
+            return Clear)
        ||| token (do 
-            char ':'  -- command history 
-            ns <- many1 digit -- multiple digits
+            char ':'   
+            ns <- many1 digit 
             return (History (read ns)))
        ||| token (do 
             string ":print"
@@ -381,7 +373,7 @@ pCommand = do
             command)
        return (first:rest)
 
--- new parsers for boolean and comparison operators
+-- Parsers for boolean and comparison operators
 pExpr :: Parser Expr
 pExpr = pOr
 
@@ -432,7 +424,6 @@ rest t = (do symbol "++"
                  rest (Sub t e))
          <|> return t
 
-
 pTerm :: Parser Expr
 pTerm = pStrVal
   <|> do symbol "not"
@@ -473,10 +464,6 @@ pTerm = pStrVal
                  return (Mod f t)
           <|> return f)
 
-
--- This is the factor parser with 
--- added multi-digit support
--- and negative number support
 pFactor :: Parser Expr
 pFactor = do d <- double
              return (Val (VFloat d))
@@ -493,7 +480,7 @@ pFactor = do d <- double
                symbol ")"
                return e
 
--- This parses strings 
+-- Parses strings 
 pStrVal :: Parser Expr 
 pStrVal = do 
    char '"'

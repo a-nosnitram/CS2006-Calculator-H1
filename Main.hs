@@ -5,6 +5,7 @@ import Expr
 import REPL
 import System.Environment (getArgs)
 
+-- Entry point of the program
 main :: IO ()
 main = do 
        args <- getArgs 
@@ -12,18 +13,17 @@ main = do
             [] -> repl initREPLState
             [fileName] -> runFile fileName
 
--- This function reads a file, retieves its content, splitting it into lines, 
--- and then calls runCommands on the contents of the file 
+-- Function to read and execute commands from a file 
 runFile :: String -> IO ()
 runFile fileName = do 
                    contents <- readFile fileName -- retrieving file contetnts 
                    let commands = lines contents -- splitting file into lines
                    putStrLn ("reading from file " ++ fileName ++ "\n")
-                   runCommands commands initREPLState 1 -- 0 is the number of the line we're on
+                   runCommands commands initREPLState 1 -- the number of first line
 
--- This function similar to repl in REPL.hs, but just runs untill the end of the file insltead 
--- of looping back and quits automatically when it has executed all commands 
--- it also prints out the command before printing out its result 
+-- Function to execute a list of commands from a file
+-- Similar to 'repl' in REPL.hs but processes all commands sequentially
+-- Automatically exits when all commands are executed
 runCommands :: [String] -> REPLState -> Int -> IO ()
 runCommands [] st l = putStrLn "\n file reading complete"
 runCommands (cmd:cmds) st l = do 
