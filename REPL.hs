@@ -44,16 +44,20 @@ process st Quit inp = putStrLn "Bye"
 
 -- Process a 'Set' command: evaluates an expression and updates variables
 process st (Set var e) inp = 
-  case eval (vars st) e of
-    Right v -> do
-      putStrLn ("OK : " ++ var ++ " = " ++ show v)
-      let newVars = updateVars var v (vars st)
-          newSt = addHistory st (Set var e) inp  -- Add to history
-          finalSt = newSt { vars = newVars, lastResult = Just v }
-      repl finalSt
-    Left err -> do
-      putStrLn $ "Error: " ++ err
-      repl st
+  if var == "it" then do
+    putStrLn "Error: 'it' is a reserved variable name"
+    repl st
+  else
+    case eval (vars st) e of
+      Right v -> do
+        putStrLn ("OK : " ++ var ++ " = " ++ show v)
+        let newVars = updateVars var v (vars st)
+            newSt = addHistory st (Set var e) inp  -- Add to history
+            finalSt = newSt { vars = newVars, lastResult = Just v }
+        repl finalSt
+      Left err -> do
+        putStrLn $ "Error: " ++ err
+        repl st
 
 -- Process an 'Eval' command: evaluates an expression and stores it as 'it'
 process st (Eval e) inp = 
@@ -67,6 +71,12 @@ process st (Eval e) inp =
     Left err -> do
       putStrLn $ "Error: " ++ err
       repl st 
+
+-- Process a 'Simplify' command
+process st (Simplify e) inp = do
+  let simplified = simplifyExpr e
+  putStrLn (show simplified)
+  repl st 
 
 -- Process a 'History' command: retrieves and re-executes a command
 process st (History n) inp = 
@@ -121,17 +131,24 @@ repl st = do
 -- Processes commands from a file, returning a new REPL state
 processFileLine :: REPLState -> Command -> Int -> IO REPLState
 processFileLine st (Set var e) l = 
-  case eval (vars st) e of
-    Right v -> do
-      let newVars = updateVars var v (vars st)
-          finalSt = st { vars = newVars, lastResult = Just v }
-      return finalSt
-    Left err -> do
-      if l == (-1) then 
-           putStrLn $ "Error: " ++ err
-      else 
-           putStrLn $ "Error at line " ++ show l ++ ": " ++ err
-      return st
+  if var == "it" then do
+    if l == (-1) then 
+      putStrLn "Error: 'it' is a reserved variable name"
+    else 
+      putStrLn $ "Error at line " ++ show l ++ ": 'it' is a reserved variable name"
+    return st
+  else
+    case eval (vars st) e of
+      Right v -> do
+        let newVars = updateVars var v (vars st)
+            finalSt = st { vars = newVars, lastResult = Just v }
+        return finalSt
+      Left err -> do
+        if l == (-1) then 
+             putStrLn $ "Error: " ++ err
+        else 
+             putStrLn $ "Error at line " ++ show l ++ ": " ++ err
+        return st
 
 processFileLine st (Eval e) l = 
   case eval (vars st) e of
