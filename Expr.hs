@@ -58,7 +58,7 @@ data Expr = Add Expr Expr   -- Addition
           | Gt Expr Expr    -- Greater than (>)
           | Leq Expr Expr   -- Less than or equal (<=)
           | Geq Expr Expr   -- Greater than or equal (>=)
-          deriving (Show, Eq)
+  
 
 
 -- Commands for a REPL (Read-Eval-Print Loop)
@@ -72,7 +72,7 @@ data Command = Set Name Expr  -- Assign variable
              | Loop Int [Command] -- Loop command for repeated execution
              | Print [Expr]  -- Print command for displaying expressions
              | Simplify Expr --- Simplify expressions 
-             deriving (Show, Eq)
+  deriving (Show, Eq)
 
 -- Binary search tree for storing variable values
 data VarTree = Empty
