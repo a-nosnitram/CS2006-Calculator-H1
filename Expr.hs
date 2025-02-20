@@ -497,12 +497,11 @@ pTerm = pStrVal
 -- This is the factor parser with 
 -- added multi-digit support
 -- and negative number support
-pFactor :: Parser Expr
 pFactor = do
-    -- Parse negative numbers
+    -- Parse negative variables
     symbol "-"
-    n <- integer
-    return (Val (VInt (-n)))
+    v <- identifier
+    return (Mul (Val (VInt (-1))) (Var v))
   <|> do
     num <- integer
     var <- identifier
@@ -521,6 +520,7 @@ pFactor = do
          e <- pExpr
          symbol ")"
          return e
+
 
 -------------------------------------------------------------------
 instance Show Expr where
@@ -659,6 +659,8 @@ simplifyExpr (Add e1 e2) =
       simplifiedTerms = collectTerms (Add e1' e2') -- Collect all terms
       groupedTerms = groupLikeTerms simplifiedTerms -- Group like terms
   in case groupedTerms of
+       [Mul (Val (VInt (-1))) (Var x), Mul (Val (VInt c)) (Var y)]
+          | x == y -> Mul (Val (VInt (c - 1))) (Var x)  -- Example: -x + 3*x → 2*x
        [single] -> single  -- If there's only one term, return it directly
        terms -> foldr1 Add terms  -- Otherwise, reconstruct the expression
 
@@ -707,40 +709,30 @@ simplifyExpr (Mul e1 e2) =
     (Val (VFloat a), Val (VInt b)) -> Val (VFloat (a * fromIntegral b))
 
     -- Identity cases
-    (Val (VInt 1), e') -> e'  -- 1 * x = x
-    (e', Val (VInt 1)) -> e'  -- x * 1 = x
-    (Val (VInt 0), _) -> Val (VInt 0)  -- 0 * x = 0
-    (_, Val (VInt 0)) -> Val (VInt 0)  -- x * 0 = 0
+    (Val (VInt 1), e') -> e'
+    (e', Val (VInt 1)) -> e'
+    (Val (VInt 0), _) -> Val (VInt 0)
+    (_, Val (VInt 0)) -> Val (VInt 0)
 
-    -- Simplify -1 * x to -x
-    (Val (VInt (-1)), Var x) -> Mul (Val (VInt (-1))) (Var x)
-    (Var x, Val (VInt (-1))) -> Mul (Val (VInt (-1))) (Var x)
-
-    -- Simplify -1 * (Val (VInt n)) to Val (VInt (-n))
-    (Val (VInt (-1)), Val (VInt n)) -> Val (VInt (-n))
-    (Val (VInt n), Val (VInt (-1))) -> Val (VInt (-n))
-
-    -- Multiplication of like variables with coefficients (e.g., 5x * x → 5x^2)
-    (Mul (Val (VInt c1)) (Var x), Var y) | x == y ->
-        Mul (Val (VInt c1)) (Power (Var x) (Val (VInt 2)))
-
-    -- Multiplication of cx * dx (e.g., 3x * 2x → 6x^2)
-    (Mul (Val (VInt c1)) (Var x), Mul (Val (VInt c2)) (Var y)) | x == y ->
-        Mul (Val (VInt (c1 * c2))) (Power (Var x) (Val (VInt 2)))
-
-    -- Multiplication of x * x should always become x^2
+    -- Multiplication of like variables (`x * x` → `x^2`)
     (Var x, Var y) | x == y -> Power (Var x) (Val (VInt 2))
 
-    -- Multiplication of a coefficient and a variable term (e.g., 5 * x → 5x)
-    (Val (VInt c), Var x) -> Mul (Val (VInt c)) (Var x)
-    (Var x, Val (VInt c)) -> Mul (Val (VInt c)) (Var x)
+    -- Multiplication of `x^a * x` → `x^(a+1)`
+    (Power (Var x1) (Val (VInt a)), Var x2) | x1 == x2 ->
+        Power (Var x1) (Val (VInt (a + 1)))
 
-    -- Multiplication of different variables (e.g., 2x * 3y → 6xy)
-    (Mul (Val (VInt c1)) (Var x), Mul (Val (VInt c2)) (Var y)) ->
-        Mul (Val (VInt (c1 * c2))) (Mul (Var x) (Var y))
+    -- Multiplication of `x * x^b` → `x^(b+1)`
+    (Var x1, Power (Var x2) (Val (VInt b))) | x1 == x2 ->
+        Power (Var x1) (Val (VInt (b + 1)))
 
-    -- Default case: no further simplification possible
-    (e1', e2') -> Mul e1' e2'
+    -- Multiplication of `x^a * x^b` → `x^(a+b)`
+    (Power (Var x1) (Val (VInt a)), Power (Var x2) (Val (VInt b))) | x1 == x2 ->
+        Power (Var x1) (Val (VInt (a + b)))
+
+    -- Default case: return the expression unchanged
+    _ -> Mul e1' e2'
+
+
 
 
 -- Division Simplifications
