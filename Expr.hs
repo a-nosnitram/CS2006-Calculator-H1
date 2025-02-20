@@ -18,6 +18,7 @@ import Parsing
 import Data.Fixed (mod')
 import Control.Applicative hiding (many)
 import Data.List (groupBy, sortOn)
+import Parsing (space)
 
 type Name = String
 
