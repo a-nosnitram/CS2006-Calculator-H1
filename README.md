@@ -3,8 +3,9 @@
 ## running the program
 ```
 ghc --make Main.hs -o calc 
-./calc
+./calc 
 ```
+Running `./clac` without arguments will result in calculator mode. To run a gile, pass in the file name as a command line argument : `./calc test-files/string-test.txt`. 
 
 ### running the calculator 
 ```
