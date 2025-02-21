@@ -261,6 +261,7 @@ eval vars (Eq x y) = do
     (VInt a, VFloat b)   -> Right $ VBool (fromIntegral a == b)
     (VFloat a, VInt b)   -> Right $ VBool (a == fromIntegral b)
     (VBool a, VBool b)   -> Right $ VBool (a == b)
+    (VString a, VString b) -> Right $ VBool (a == b)
     _ -> Left "Cannot compare values of different types"
 
 --inEquality (/=)
@@ -273,6 +274,7 @@ eval vars (Neq x y) = do
     (VInt a, VFloat b)   -> Right $ VBool (fromIntegral a /= b)
     (VFloat a, VInt b)   -> Right $ VBool (a /= fromIntegral b)
     (VBool a, VBool b)   -> Right $ VBool (a /= b)
+    (VString a, VString b) -> Right $ VBool (a /= b)
     _ -> Left "Cannot compare values of different types" 
 
 --Less Than (<)
@@ -283,7 +285,8 @@ eval vars (Lt x y) = do
     (VInt a, VInt b)     -> Right $ VBool (a < b)
     (VFloat a, VFloat b) -> Right $ VBool (a < b)
     (VInt a, VFloat b)   -> Right $ VBool (fromIntegral a < b)
-    (VFloat a, VInt b)   -> Right $ VBool (a < fromIntegral b)
+    (VFloat a, VInt b)   -> Right $ VBool (a < fromIntegral b) 
+    (VString a, VString b) -> Left "This comparison does not support Strings"
     _ -> Left "Cannot compare values of different types"
 
 --Greater Than (>)
@@ -295,6 +298,7 @@ eval vars (Gt x y) = do
     (VFloat a, VFloat b) -> Right $ VBool (a > b)
     (VInt a, VFloat b)   -> Right $ VBool (fromIntegral a > b)
     (VFloat a, VInt b)   -> Right $ VBool (a > fromIntegral b)
+    (VString a, VString b) -> Left "This comparison does not support Strings"
     _ -> Left "Cannot compare values of different types"
 
 --Less than or equal (<=)
@@ -306,6 +310,7 @@ eval vars (Leq x y) = do
     (VFloat a, VFloat b) -> Right $ VBool (a <= b)
     (VInt a, VFloat b)   -> Right $ VBool (fromIntegral a <= b)
     (VFloat a, VInt b)   -> Right $ VBool (a <= fromIntegral b)
+    (VString a, VString b) -> Left "This comparison does not support Strings"
     _ -> Left "Cannot compare values of different types"
 
 --Greater than or equal (>=)
@@ -317,6 +322,7 @@ eval vars (Geq x y) = do
     (VFloat a, VFloat b) -> Right $ VBool (a >= b)
     (VInt a, VFloat b)   -> Right $ VBool (fromIntegral a >= b)
     (VFloat a, VInt b)   -> Right $ VBool (a >= fromIntegral b)
+    (VString a, VString b) -> Left "This comparison does not support Strings"
     _ -> Left "Cannot compare values of different types"
 
 -- Helper function to convert char to int

@@ -1,0 +1,20 @@
+# just strings 
+"this is a string"
+
+# printing and concatenating 
+:print "this string " ++ "is concatenated"
+
+# string operations 
+:print "string operations"
+:print "a" == "a"
+:print "a" == ""
+:print "a" != "a"
+:print "a" != ""
+:print "" == ""
+
+# Errors
+:print "ERRORS"
+:print "" > "a"
+:print "a" < "a"
+:print "a" <= "a"
+:print "a" >= "a"
