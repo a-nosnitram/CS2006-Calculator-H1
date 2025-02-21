@@ -1,5 +1,6 @@
 module REPL where
 
+import System.IO (hFlush, stdout) 
 import Expr
 import Expr (VarTree, lookupVar)
 import Parsing
@@ -121,6 +122,7 @@ process st (Print exprs) inp = do
 repl :: REPLState -> IO ()
 repl st = do
   putStr $ show (length (history st)) ++ " > "
+  hFlush stdout
   inp <- getLine
   case parse pCommand inp of
     [(cmd, "")] -> process st cmd inp
